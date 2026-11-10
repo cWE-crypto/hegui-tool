@@ -106,7 +106,7 @@
         <span class="hl-A">A类 暗示直播课</span><span class="hl-B">B类 学段学科</span><span class="hl-D">D类 师资背景</span>
         <span class="hl-E">E类 绝对化</span><span class="hl-F">F类 焦虑</span><span class="hl-G">G类 私域导流</span>
         <span class="hl-H">H类 虚假促销</span><span class="hl-I4">1.4 条款</span><span class="hl-PA">平台·人身攻击</span><span class="hl-PD">平台·贬损群体</span>
-        <div class="legend" style="margin-top:6px">句子底色：<span style="background:#ffd9d9;padding:0 4px;border-radius:3px">含高危（必改）</span><span style="background:#fff1bd;padding:0 4px;border-radius:3px">含中危（建议改）</span><span style="background:#eef1f4;padding:0 4px;border-radius:3px">仅低危（提示）</span></div>
+        <div class="legend" style="margin-top:6px">句末<span class="vtag">【A:类别】</span>=该句违规类目（红字）；无标记句子＝无风险点</div>
       </div>
     </div>
 
@@ -607,7 +607,7 @@ function render(){
       const sev=maxSevIn(hs,seg);
       const seen={},tags=[];
       inH.forEach(h=>{if(!seen[h.rule.id]){seen[h.rule.id]=1;const mk=MK[h.rule.sev];tags.push(mk.b+mk.g+':'+esc(h.rule.cat.split('（')[0])+mk.e);}});
-      html+=`<span style="background:${SENTBG[sev]};border-radius:3px;padding:0 1px">${inner}</span><span class="vtag">${tags.join('')}</span>`;
+      html+=inner+`<span class="vtag">${tags.join('')}</span>`;
     });
     ah+=`<div class="para"><span class="t">${fmtT(c.t)}</span>${html}</div>`;
   });
@@ -747,7 +747,7 @@ document.getElementById('dlAnno').onclick=()=>{
   body+='<p><b>核心结论：</b>'+coreVerdict(hits).text+'</p>';
   body+='<h2>一、标注口径与色块说明</h2>';
   body+='<p>【A:词】＝明确违规，依据充分，必须整改；〔B:词〕＝倾向违规，表述委婉或要素不齐，建议整改；〈C:词〉＝提示项，规则未完全成立但存在判定风险。词底色＝违规大类（见下表），与《韦老师聊学习》《别走弯路 初三》两份标注版口径一致。</p>';
-  body+='<p>标注口径（对齐参考案例）：①句子底色＝违规程度：<span style="background:#ffd9d9">&nbsp;红＝含高危（必改）&nbsp;</span>　<span style="background:#fff1bd">&nbsp;黄＝含中危（建议改）&nbsp;</span>；②词底色＝违规大类荧光（见下表）；③句末【A:类别】〔B:类别〕＝该句触碰的违规类目，同一句同类违规合并只标一处，不逐词重复。低危命中（学段词/绝对化等）与学科词（B类）默认不在正文标注，仅在第①②节统计'+(STATE.showLow?'（本次已勾选"显示低危提示"，低危也已标出）':'')+'。</p>';
+  body+='<p>标注口径（对齐参考案例，控制标注密度）：①风险词荧光＝违规大类色块（见下表），正文不做整句底色；②句末【A:类别】〔B:类别〕＝该句触碰的违规类目，同一句同类违规合并只标一处，不逐词重复；③无风险句子不做任何标记。低危命中（学段词/绝对化等）与学科词（B类）默认不在正文标注，仅在第①②节统计'+(STATE.showLow?'（本次已勾选"显示低危提示"，低危也已标出）':'')+'。</p>';
   body+='<table><tr><th>色块</th><th>违规大类</th><th>级别</th><th>统一改写方向</th></tr>';
   (gKeys.length?gKeys:Object.keys(groups)).forEach(k=>{
     const g=groups[k];
@@ -794,7 +794,7 @@ document.getElementById('dlAnno').onclick=()=>{
       const sev=maxSevIn(hs,seg);
       const seen={},tags=[];
       inH.forEach(h=>{if(!seen[h.rule.id]){seen[h.rule.id]=1;const mk=MK[h.rule.sev];tags.push(mk.b+mk.g+':'+esc(h.rule.cat.split('（')[0])+mk.e);}});
-      html+=`<span style="background:${SENTBG[sev]}">${inner}</span><b style="color:#c0392b;font-size:9pt">${tags.join('')}</b>`;
+      html+=inner+`<b style="color:#c0392b;font-size:9pt">${tags.join('')}</b>`;
     });
     body+=`<p><span class="t">${fmtT(c.t)} </span>${html}</p>`;
   });
