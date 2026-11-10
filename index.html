@@ -730,13 +730,14 @@ document.getElementById('dlAnno').onclick=()=>{
   }else{
     body+='<p class="meta">本场未命中已知违规句，逐条改写方向见上表「建议改写句」列。</p>';
   }
+  body+='<p class="meta">颜色图例：'+RULES.map(r=>`<span style="background:${bgOf(r.cls)};background-color:${bgOf(r.cls)}">&nbsp;${esc(r.cat.split('（')[0])}&nbsp;</span>`).join(' ')+'</p>';
   body+='<h2>三、逐段标注</h2>';
   chunks.forEach((c,ci)=>{
     const hs=hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
     let html='',pos=0;
     for(const h of hs){
       html+=esc(c.text.slice(pos,h.start));
-      html+=`<mark style="background:${bgOf(h.rule.cls)}">${esc(c.text.slice(h.start,h.end))}</mark> <span style="color:#c0392b;font-size:8.5pt">[${h.rule.sev}·${esc(h.rule.cat)}]</span>`;
+      html+=`<span style="background:${bgOf(h.rule.cls)};background-color:${bgOf(h.rule.cls)};font-weight:bold">${esc(c.text.slice(h.start,h.end))}</span><span style="color:#c0392b;font-size:8.5pt"> [${h.rule.sev}·${esc(h.rule.cat)}]</span>`;
       pos=h.end;
     }
     html+=esc(c.text.slice(pos));
