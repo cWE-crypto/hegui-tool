@@ -93,6 +93,11 @@
     </div>
 
     <div class="card">
+      <h2>⭐ 密度诊断 <span class="tag">学科密度 · 40秒扎堆 · 钩子节奏</span></h2>
+      <div id="densityPanel" style="font-size:13px"></div>
+    </div>
+
+    <div class="card">
       <h2>③ 违规点清单 <span class="tag" id="hitTag"></span></h2>
       <div id="hitTableWrap"></div>
       <div class="legend">
@@ -258,6 +263,170 @@ function chunk(paras){
 function fmtT(t){if(t===null||t===undefined)return'';const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':');}
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
+/* ================= 密度判定：学科密度 / 40秒扎堆 / 钩子间隔 =================
+   阈值来源：《密度具象化-秒级规则》《扎堆规则》《不违规的密度-安全基准值》(21场实测)
+   —— 40秒≥3类占比：<55% 安全 / 55-65 灰 / 65-72 历史不判罚 / 72-80 高风险 / ≥80 基本必罚
+   —— 一句≈8秒（7086 个真实句间隔中位数）
+   钩子间隔阈值为经验默认值，可在 HOOK_GAP 调整
+*/
+const CAT_RE = {
+  '年级':/初一|初二|初三|高一|高二|高三|小学|初中|高中|七年级|八年级|九年级|初升高|小升初/g,
+  '学科':/数学|语文|英语|物理|化学|生物|政治|历史|地理|文言文|古诗词|作文|阅读理解|语法|单词|完形|奥数/g,
+  '课':/直播|录播|回放|训练营|集训营|1v1|小灶|二讲|主讲|答疑|\d+\s*节|\d+\s*讲|这节课|这门课|课程/g,
+  '孩子':/孩子|娃|学生|儿子|女儿|家长|咱家/g,
+  '考试':/中考|高考|一模|二模|三模|期中|期末|考试|分数|成绩|录取|批次|志愿/g,
+};
+const HOOK_RE = [
+  {type:'悬念预告', re:/接下来|下一句|下一条|等会|一会儿|最后一点|最后一条|第三点|第二点|第一点|先说结论|三句话|三个关键|重点来了|划重点|记住这句/g},
+  {type:'留人提醒', re:/别划走|先别走|别走开|留在直播间|再听|听我说完|听到最后|别急着|稍等/g},
+  {type:'互动引导', re:/扣个?1|扣1|打个1|评论区|公屏|打字|点赞|点个赞|关注|双击/g},
+  {type:'利益钩子', re:/领资料|免费领|福利|名额|限时|白给|送你|加群|进群|资料包/g},
+];
+const HOOK_GAP={good:3,mild:5,weak:8};   // 分钟：≤3 良好 / ≤5 偏慢 / ≤8 偏弱 / >8 危险
+
+function catCountsIn(text){
+  const r={},cats=[];
+  for(const k in CAT_RE){CAT_RE[k].lastIndex=0;const m=text.match(CAT_RE[k]);if(m){r[k]=m.length;cats.push(k);}}
+  return {cats,counts:r};
+}
+function hooksIn(text){
+  const out=[];
+  HOOK_RE.forEach(h=>{h.re.lastIndex=0;let m;while((m=h.re.exec(text)))out.push({type:h.type,text:m[0]});});
+  return out;
+}
+function median(a){if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);const i=Math.floor(s.length/2);return s.length%2?s[i]:(s[i-1]+s[i])/2;}
+function fmtMin(sec){if(sec===null||sec===undefined)return'—';const m=Math.floor(sec/60),s=Math.round(sec%60);return m+'分'+(s<10?'0':'')+s+'秒';}
+
+function computeDensity(paras){
+  const sent=paras.map((p,i)=>{
+    const cc=catCountsIn(p.text);
+    return {i,t:(p.t===null||p.t===undefined)?null:p.t,text:p.text,cats:cc.cats,counts:cc.counts,hooks:hooksIn(p.text)};
+  });
+  const withTs=sent.filter(s=>s.t!==null).length;
+  const hasTs=withTs>=3;
+  sent.forEach((s,i)=>{if(s.t===null)s.t=i*8;});
+  const totalSec=(sent.length?sent[sent.length-1].t+8:0);
+  const totalMin=totalSec/60;
+
+  // 40 秒滑动窗口（逐秒扫描，口径=时间占比）
+  const secs=Math.max(1,Math.ceil(totalSec));
+  const dirtySec=new Array(secs).fill(false);
+  let ge4sec=0;
+  for(let s=0;s<secs;s++){
+    const set={};
+    for(let j=0;j<sent.length;j++){
+      if(sent[j].t>=s+40)break;
+      if(sent[j].t>=s-8)sent[j].cats.forEach(c=>set[c]=1);
+    }
+    const n=Object.keys(set).length;
+    if(n>=3)dirtySec[s]=true;
+    if(n>=4)ge4sec++;
+  }
+  const dirtyN=dirtySec.filter(Boolean).length;
+  const r40=dirtyN/secs, r40ge4=ge4sec/secs;
+
+  // 扎堆时长 = 脏秒数；连续干净段 = 最长非脏秒连续
+  const cover=dirtyN;
+  let best=0,cur=0;
+  for(let s=0;s<secs;s++){
+    if(!dirtySec[s]){cur++;if(cur>best)best=cur;}else cur=0;
+  }
+
+  // 学科与其他类同框率（60 秒窗口）
+  let subjExam=0,gradeSubj=0;
+  for(let s=0;s<secs;s++){
+    const set={};
+    for(let j=0;j<sent.length;j++){
+      if(sent[j].t>=s+60)break;
+      if(sent[j].t>=s-8)sent[j].cats.forEach(c=>set[c]=1);
+    }
+    if(set['学科']&&set['考试'])subjExam++;
+    if(set['年级']&&set['学科'])gradeSubj++;
+  }
+  const rSubjExam=subjExam/secs, rGradeSubj=gradeSubj/secs;
+
+  // 一句话挂几类
+  const sumCats=sent.reduce((a,s)=>a+s.cats.length,0);
+  const avgCats=sumCats/sent.length;
+  const ge2=sent.filter(s=>s.cats.length>=2).length/sent.length;
+  const ge3=sent.filter(s=>s.cats.length>=3).length/sent.length;
+
+  // 学科密度
+  const subjHits=sent.reduce((a,s)=>a+(s.counts['学科']||0),0);
+  const withCatSent=sent.filter(s=>s.cats.length>0).length;
+  const per10=totalMin>0?withCatSent/totalMin*10:0;
+  const subjPerMin=totalMin>0?subjHits/totalMin:0;
+
+  // 钩子
+  const hookSent=[];
+  sent.forEach(s=>{if(s.hooks.length)hookSent.push({t:s.t,types:s.hooks.map(h=>h.type),n:s.hooks.length});});
+  const gaps=[];
+  for(let i=1;i<hookSent.length;i++)gaps.push(hookSent[i].t-hookSent[i-1].t);
+  const headGap=hookSent.length?hookSent[0].t:totalSec;                       // 开场到第一个钩子
+  const tailGap=hookSent.length?Math.max(0,totalSec-hookSent[hookSent.length-1].t):0;
+  const gapMed=median(gaps);
+  const gapMax=Math.max.apply(null,(gaps.length?gaps:[0]).concat([headGap,tailGap]));  // 全场最长无钩子
+  const hookPerMin=totalMin>0?hookSent.length/totalMin:0;
+
+  return {sent,hasTs,totalSec,totalMin,r40,r40ge4,cover,best,avgCats,ge2,ge3,
+    subjHits,subjPerMin,per10,rSubjExam,rGradeSubj,hookSent,gaps,gapMed,gapMax,headGap,tailGap,hookPerMin};
+}
+function judgeDensity(r40){
+  if(r40<0.55)return{l:'🟢 安全区',c:'#00693e',n:'40秒内≥3类占比低于 55%，落在外部干净场区间（实测判罚 33%，且两场为文本解释不了的情况）'};
+  if(r40<0.65)return{l:'🟡 灰色（样本不足）',c:'#ad6800',n:'55–65% 区间历史样本仅 1 场，判罚证据不足，按高风险对待'};
+  if(r40<0.72)return{l:'🟢 灰区（历史不判罚）',c:'#00693e',n:'65–72% 区间实测 0/5 判罚，但仍贴着违规均值（72.6%）下沿，建议继续降'};
+  if(r40<0.80)return{l:'🟠 高风险',c:'#e67e22',n:'72–80% 区间实测判罚 2/3，已越过违规均值 72.6%'};
+  return{l:'🔴 基本必罚',c:'#d63031',n:'≥80% 区间实测判罚 6/6，40 秒扎堆已成常态'};
+}
+function judgeGap(m){
+  if(m===null)return{l:'—',c:'#6b7280',n:'文稿里没有识别到钩子句'};
+  if(m<=HOOK_GAP.good)return{l:'🟢 良好',c:'#00693e',n:'钩子间隔 ≤3 分钟，留人节奏达标'};
+  if(m<=HOOK_GAP.mild)return{l:'🟡 偏慢',c:'#ad6800',n:'3–5 分钟才一个钩子，中段容易掉人'};
+  if(m<=HOOK_GAP.weak)return{l:'🟠 偏弱',c:'#e67e22',n:'5–8 分钟才一个钩子，留人力偏弱'};
+  return{l:'🔴 危险',c:'#d63031',n:'超过 8 分钟没有钩子，观众流失风险高'};
+}
+function renderDensity(){
+  if(!STATE)return;
+  const d=computeDensity(STATE.paras);
+  const jd=judgeDensity(d.r40),jg=judgeGap(d.hookSent.length?d.gapMax/60:null);
+  const pc=x=>(x*100).toFixed(1)+'%';
+  const hookTypes={};
+  d.hookSent.forEach(h=>h.types.forEach(t=>hookTypes[t]=(hookTypes[t]||0)+1));
+  let h=`<div style="border-left:4px solid ${jd.c};background:#fafbfc;padding:10px 14px;border-radius:0 6px 6px 0;margin-bottom:10px">
+    <b style="color:${jd.c};font-size:15px">判定：${jd.l}</b>
+    <div style="color:var(--sub);font-size:12.5px;margin-top:2px">${jd.n}</div></div>`;
+  h+=`<div class="stats">
+    <div class="stat"><b>${pc(d.r40)}</b><span>40秒≥3类占比</span></div>
+    <div class="stat"><b>${d.avgCats.toFixed(2)}</b><span>一句挂几个类目</span></div>
+    <div class="stat"><b>${pc(d.ge2)}</b><span>挂≥2类句子占比</span></div>
+    <div class="stat"><b>${d.subjPerMin.toFixed(1)}</b><span>学科词 次/分钟</span></div>
+    <div class="stat"><b>${fmtMin(d.best)}</b><span>最长连续干净段</span></div>
+  </div>`;
+  h+=`<div class="stats">
+    <div class="stat"><b>${d.hookSent.length}</b><span>钩子总数</span></div>
+    <div class="stat"><b>${d.gapMed===null?'—':(d.gapMed/60).toFixed(1)+'分'}</b><span>钩子间隔中位</span></div>
+    <div class="stat"><b>${d.hookSent.length?(d.gapMax/60).toFixed(1)+'分':'—'}</b><span>最长无钩子</span></div>
+    <div class="stat"><b>${(d.headGap/60).toFixed(1)}分</b><span>开场首个钩子</span></div>
+    <div class="stat"><b>${d.hookPerMin.toFixed(2)}</b><span>钩子 个/分钟</span></div>
+    <div class="stat"><b style="color:${jg.c}">${jg.l}</b><span>钩子节奏</span></div>
+  </div>`;
+  h+=`<table><tr><th>指标</th><th>本场</th><th>🟢 外部均值线</th><th>🔴 违规场均</th><th>判定</th></tr>
+    <tr><td>40秒内≥3类占比</td><td><b>${pc(d.r40)}</b></td><td>44.4%</td><td>72.6%</td><td>${jd.l}</td></tr>
+    <tr><td>一句挂几个类目</td><td><b>${d.avgCats.toFixed(2)}</b></td><td>0.99</td><td>1.52</td><td>${d.avgCats<=0.99?'🟢 达标':d.avgCats<=1.22?'🟡 接近':'🔴 超标'}</td></tr>
+    <tr><td>挂≥2类的句子占比</td><td><b>${pc(d.ge2)}</b></td><td>24.4%</td><td>49.5%</td><td>${d.ge2<=0.244?'🟢 达标':d.ge2<=0.335?'🟡 接近':'🔴 超标'}</td></tr>
+    <tr><td>每10分钟含具体词句数</td><td><b>${d.per10.toFixed(0)} 句</b></td><td>51 句</td><td>61 句</td><td>${d.per10<=51?'🟢 达标':d.per10<=59?'🟡 接近':'🔴 超标'}</td></tr>
+    <tr><td>每10分钟扎堆时长</td><td><b>${(d.cover/60/d.totalMin*10).toFixed(2)} 分</b></td><td>≤4.51 分</td><td>7.64 分</td><td>${(d.cover/60/d.totalMin*10)<=4.51?'🟢 达标':(d.cover/60/d.totalMin*10)<=5.5?'🟡 红线内':'🔴 超标'}</td></tr>
+    <tr><td>学科+考试 60秒同框</td><td><b>${pc(d.rSubjExam)}</b></td><td>39.5%</td><td>59.4%</td><td>${d.rSubjExam<=0.395?'🟢 达标':d.rSubjExam<=0.594?'🟡 接近':'🔴 超标'}</td></tr>
+    <tr><td>年级+学科 60秒同框</td><td><b>${pc(d.rGradeSubj)}</b></td><td>23.0%</td><td>38.9%</td><td>${d.rGradeSubj<=0.23?'🟢 达标':d.rGradeSubj<=0.389?'🟡 接近':'🔴 超标'}</td></tr>
+    <tr><td>最长连续干净段</td><td><b>${fmtMin(d.best)}</b></td><td>≥4 分</td><td>1.9 分</td><td>${d.best>=240?'🟢 达标':'🔴 不达标'}</td></tr>
+    <tr><td>钩子间隔（中位 / 最长无钩子）</td><td><b>${d.gapMed===null?'—':(d.gapMed/60).toFixed(1)+'分'} / ${d.hookSent.length?(d.gapMax/60).toFixed(1)+'分':'—'}</b></td><td>经验：中位≤3 分</td><td>—</td><td>${jg.l}</td></tr>
+  </table>`;
+  const typeStr=Object.keys(hookTypes).map(k=>k+' '+hookTypes[k]+' 处').join('｜');
+  h+=`<p class="note" style="margin-top:8px">钩子构成：${d.hookSent.length?(typeStr||'—'):'未识别到钩子句'}${d.hasTs?'':`｜⚠️ 无时间戳，按 8 秒/句估算`}</p>`;
+  h+=`<p class="note">判定口径取自 21 场实测（外部 4 场为干净标杆）；钩子间隔阈值为经验默认值。整改优先级：①拉长干净段（连续 ≥4 分钟不提扎堆组合）②一句话只挂 1 个类目 ③资料句后 60 秒不提提分词。</p>`;
+  document.getElementById('densityPanel').innerHTML=h;
+}
+
 /* ================= 扫描 ================= */
 let STATE=null;
 function scanChunks(chunks){
@@ -296,7 +465,19 @@ function logUse(action){
       categories:[...new Set(STATE.hits.map(h=>h.rule.cat))],action});
     localStorage.setItem('hegui_usage',JSON.stringify(arr.slice(-5000)));
   }catch(e){}
-  loadStats();
+  
+/* iframe 预览环境检测：沙箱内下载会被拦截 */
+(function(){
+  try{
+    if(window.self!==window.top){
+      var d=document.createElement('div');
+      d.style.cssText='background:#fff7e6;border:1px solid #ffd591;color:#ad6800;border-radius:8px;padding:10px 14px;margin:0 0 14px;font-size:13px';
+      d.innerHTML='\u26a0\ufe0f 当前页面在预览面板（iframe）中打开，文件下载会被浏览器拦截。请把链接复制到 Chrome/Edge 新标签页打开，或直接双击 index.html 使用，下载即正常。';
+      document.querySelector('.wrap').insertBefore(d,document.querySelector('.wrap').firstChild);
+    }
+  }catch(e){}
+})();
+loadStats();
 }
 
 document.getElementById('scanBtn').onclick=async()=>{
@@ -357,6 +538,7 @@ function render(){
   // 成稿视图
   renderFinal();
   renderTabs();
+  renderDensity();
 }
 function renderFinal(){
   const {chunks,hits}=STATE;
@@ -505,9 +687,25 @@ document.getElementById('dlAnno').onclick=()=>{
     html+=esc(c.text.slice(pos));
     body+=`<p><span class="t">${fmtT(c.t)} </span>${html}</p>`;
   });
+  // 四、密度诊断
+  const _d=computeDensity(STATE.paras), _jd=judgeDensity(_d.r40), _jg=judgeGap(_d.hookSent.length?_d.gapMax/60:null);
+  body+='<h2>四、密度诊断（学科密度 / 40秒扎堆 / 钩子节奏）</h2>';
+  body+=`<p><b>判定：${_jd.l}</b>　${_jd.n}</p>`;
+  body+='<table><tr><th>指标</th><th>本场</th><th>外部均值线</th><th>违规场均</th><th>判定</th></tr>';
+  body+=`<tr><td>40秒内≥3类占比</td><td>${(_d.r40*100).toFixed(1)}%</td><td>44.4%</td><td>72.6%</td><td>${_jd.l}</td></tr>`;
+  body+=`<tr><td>一句挂几个类目</td><td>${_d.avgCats.toFixed(2)}</td><td>0.99</td><td>1.52</td><td>${_d.avgCats<=1.22?'达标/接近':'超标'}</td></tr>`;
+  body+=`<tr><td>挂≥2类句子占比</td><td>${(_d.ge2*100).toFixed(1)}%</td><td>24.4%</td><td>49.5%</td><td>${_d.ge2<=0.335?'达标/接近':'超标'}</td></tr>`;
+  body+=`<tr><td>学科词密度</td><td>${_d.subjPerMin.toFixed(1)} 次/分钟</td><td>—</td><td>—</td><td>参考</td></tr>`;
+  body+=`<tr><td>每10分钟含具体词句数</td><td>${_d.per10.toFixed(0)} 句</td><td>51 句</td><td>61 句</td><td>${_d.per10<=59?'达标/接近':'超标'}</td></tr>`;
+  body+=`<tr><td>每10分钟扎堆时长</td><td>${(_d.cover/60/_d.totalMin*10).toFixed(2)} 分</td><td>≤4.51 分</td><td>7.64 分</td><td>${(_d.cover/60/_d.totalMin*10)<=5.5?'达标/红线内':'超标'}</td></tr>`;
+  body+=`<tr><td>学科+考试 60秒同框</td><td>${(_d.rSubjExam*100).toFixed(1)}%</td><td>39.5%</td><td>59.4%</td><td>${_d.rSubjExam<=0.594?'达标/接近':'超标'}</td></tr>`;
+  body+=`<tr><td>年级+学科 60秒同框</td><td>${(_d.rGradeSubj*100).toFixed(1)}%</td><td>23.0%</td><td>38.9%</td><td>${_d.rGradeSubj<=0.389?'达标/接近':'超标'}</td></tr>`;
+  body+=`<tr><td>最长连续干净段</td><td>${fmtMin(_d.best)}</td><td>≥4 分</td><td>1.9 分</td><td>${_d.best>=240?'达标':'不达标'}</td></tr>`;
+  body+=`<tr><td>钩子总数 / 间隔中位 / 最长无钩子</td><td>${_d.hookSent.length} 个 / ${_d.gapMed===null?'—':(_d.gapMed/60).toFixed(1)+'分'} / ${_d.hookSent.length?(_d.gapMax/60).toFixed(1)+'分':'—'}（开场首钩 ${(_d.headGap/60).toFixed(1)} 分）</td><td>≤3 分（经验）</td><td>—</td><td>${_jg.l}</td></tr>`;
+  body+='</table>';
   download(filename.replace(/\.[^.]+$/,'')+'-违规标注-含优化句.doc',wordDoc(filename,body));
   logUse('export-anno');
-  toast('标注版（含优化后句子）已下载');
+  toast('已下载：'+filename.replace(/\.[^.]+$/,'')+'-违规标注-含优化句.doc（见浏览器下载列表）');
 };
 function bgOf(cls){return {A:'#ffd6d6',B:'#fff1b8',C:'#ffe0f0',D:'#d9f7be',E:'#e8e8e8',F:'#efdbff',G:'#b5f5ec',H:'#ffd6e7',I4:'#ffccc7',I4b:'#ffccc7',PA:'#ffaba6',PD:'#b5f5ec',PC:'#b5f5ec'}[cls]||'#ffff99';}
 document.getElementById('dlFinal').onclick=()=>{
@@ -527,8 +725,10 @@ document.getElementById('dlFinal').onclick=()=>{
   });
   download(filename.replace(/\.[^.]+$/,'')+'-调整后成稿.doc',wordDoc(filename,body));
   logUse('export-final');
-  toast('成稿已下载');
+  toast('已下载：'+filename.replace(/\.[^.]+$/,'')+'-调整后成稿.doc（见浏览器下载列表）');
 };
+
+
 
 /* ================= 使用统计（纯静态版：localStorage 本机存储） ================= */
 function loadStats(){
