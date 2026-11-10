@@ -79,7 +79,7 @@
     </div>
     <div class="row" style="margin-top:12px">
       <button id="scanBtn">🔍 开始扫描标注</button>
-      <button id="dlAnno" class="ghost" disabled>⬇️ 下载标注版 .doc</button>
+      <button id="dlAnno" class="ghost" disabled>⬇️ 下载标注版（含优化句）.doc</button>
       <button id="dlFinal" class="ghost" disabled>⬇️ 下载调整后成稿 .doc</button>
       <span id="scanStatus" style="color:var(--sub);font-size:12.5px"></span>
     </div>
@@ -440,11 +440,60 @@ function download(name,content){
   const blob=new Blob(['\ufeff'+content],{type:'application/msword'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
 }
+/* 段落内出现的「原句→优化后句子」 */
+function knownPairsIn(text){
+  const out=[];
+  KNOWN.forEach(([from,to,cat])=>{
+    if(cat==='—')return;
+    let idx=0;
+    while((idx=text.indexOf(from,idx))>=0){
+      out.push({from,to,cat,start:idx,end:idx+from.length});
+      idx+=from.length;
+    }
+  });
+  return out.sort((a,b)=>a.start-b.start);
+}
+/* 已知改写句的归类 → 对应规则 id，用于避免跨类别误套用 */
+const CAT2IDS={'1.4承诺效果':['I4','C'],'1.4不评价学校':['I4b'],'D类':['D'],
+  'B类':['B','B2'],'E类':['E'],'F类':['F'],
+  '平台·人身攻击':['PA'],'平台·贬损群体':['PD'],'平台·不正当竞争':['PC']};
+function catOk(knownCat,ruleId){
+  const ids=CAT2IDS[knownCat];
+  if(!ids||!ids.length)return true;   // 政策误导/信息不实等不限类别
+  return ids.indexOf(ruleId)>=0;
+}
+/* 单条命中 → 建议改写句（优先用已沉淀的官方口径改写，否则给改写模板） */
+function suggestFor(h,pairs,chunkText){
+  const hitText=chunkText.slice(h.start,h.end);
+  const inside=pairs.find(k=>k.start<=h.start&&k.end>=h.end&&catOk(k.cat,h.rule.id));
+  if(inside)return {text:inside.to,cat:inside.cat,type:'known'};
+  const part=pairs.find(k=>(k.from.includes(hitText)||hitText.includes(k.from))&&catOk(k.cat,h.rule.id));
+  if(part)return {text:part.to,cat:part.cat,type:'known'};
+  return {text:'（按方向改写）'+h.rule.tpl,cat:h.rule.cat,type:'tpl'};
+}
 document.getElementById('dlAnno').onclick=()=>{
   const {chunks,hits,filename}=STATE;
-  let body=`<h1>${esc(filename)}——违规点标注</h1><p class="meta">生成时间：${new Date().toLocaleString('zh-CN')}｜依据《高途集团-抖音直播违规说明》A–H 八类 + 1.4 + 5.8 案例库</p><h2>一、违规点清单（${hits.length} 处）</h2><table><tr><th>时间</th><th>命中词句</th><th>官方归类</th><th>严重度</th><th>官方出处</th></tr>`;
-  hits.forEach((h,i)=>{const c=chunks[h.ci];body+=`<tr><td>${fmtT(c.t)}</td><td>${esc(h.text)}</td><td>${esc(h.rule.cat)}</td><td>${h.rule.sev}</td><td>${esc(h.rule.src)}</td></tr>`;});
-  body+='</table><h2>二、逐段标注</h2>';
+  // 每段的命中与改写建议
+  const perChunk=chunks.map(c=>({pairs:knownPairsIn(c.text)}));
+  let body=`<h1>${esc(filename)}——违规点标注 + 优化后句子</h1><p class="meta">生成时间：${new Date().toLocaleString('zh-CN')}｜依据《高途集团-抖音直播违规说明》A–H 八类 + 1.4 + 5.8 案例库</p><h2>一、违规点清单（${hits.length} 处）</h2><table><tr><th>时间</th><th>命中词句</th><th>官方归类</th><th>严重度</th><th>建议改写句</th><th>官方出处</th></tr>`;
+  hits.forEach((h,i)=>{
+    const c=chunks[h.ci];
+    const sug=suggestFor(h,perChunk[h.ci].pairs,c.text);
+    body+=`<tr><td>${fmtT(c.t)}</td><td>${esc(h.text)}</td><td>${esc(h.rule.cat)}</td><td>${h.rule.sev}</td><td>${sug.type==='known'?`<b style="color:#00693e">${esc(sug.text)}</b>`:`<span style="color:#666">${esc(sug.text)}</span>`}</td><td>${esc(h.rule.src)}</td></tr>`;
+  });
+  body+='</table>';
+  // 二、原句 → 优化后句子 对照表（全篇去重）
+  const seen={},pairsAll=[];
+  chunks.forEach(c=>{knownPairsIn(c.text).forEach(k=>{if(!seen[k.from]){seen[k.from]=1;pairsAll.push(k);}});});
+  body+=`<h2>二、原句 → 优化后句子 对照表（${pairsAll.length} 组）</h2>`;
+  if(pairsAll.length){
+    body+='<table><tr><th style="width:38%">原句（违规表达）</th><th style="width:42%">优化后句子（可照读）</th><th>改动依据</th></tr>';
+    pairsAll.forEach(k=>{body+=`<tr><td>${esc(k.from)}</td><td><b style="color:#00693e">${esc(k.to)}</b></td><td>${esc(k.cat)}</td></tr>`;});
+    body+='</table>';
+  }else{
+    body+='<p class="meta">本场未命中已知违规句，逐条改写方向见上表「建议改写句」列。</p>';
+  }
+  body+='<h2>三、逐段标注</h2>';
   chunks.forEach((c,ci)=>{
     const hs=hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
     let html='',pos=0;
@@ -456,9 +505,9 @@ document.getElementById('dlAnno').onclick=()=>{
     html+=esc(c.text.slice(pos));
     body+=`<p><span class="t">${fmtT(c.t)} </span>${html}</p>`;
   });
-  download(filename.replace(/\.[^.]+$/,'')+'-违规标注.doc',wordDoc(filename,body));
+  download(filename.replace(/\.[^.]+$/,'')+'-违规标注-含优化句.doc',wordDoc(filename,body));
   logUse('export-anno');
-  toast('标注版已下载');
+  toast('标注版（含优化后句子）已下载');
 };
 function bgOf(cls){return {A:'#ffd6d6',B:'#fff1b8',C:'#ffe0f0',D:'#d9f7be',E:'#e8e8e8',F:'#efdbff',G:'#b5f5ec',H:'#ffd6e7',I4:'#ffccc7',I4b:'#ffccc7',PA:'#ffaba6',PD:'#b5f5ec',PC:'#b5f5ec'}[cls]||'#ffff99';}
 document.getElementById('dlFinal').onclick=()=>{
