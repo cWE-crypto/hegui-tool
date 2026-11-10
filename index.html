@@ -53,6 +53,7 @@
   .toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:#1f2a44;color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;display:none;z-index:99}
   .note{font-size:12px;color:var(--sub);margin-top:6px}
   .hl-A{background:#ffd6d6}.hl-B{background:#fff1b8}.hl-C{background:#ffe0f0}.hl-D{background:#d9f7be}
+  .vtag{color:#c0392b;font-size:11.5px;font-weight:bold;margin-left:2px}
   .hl-E{background:#e8e8e8}.hl-F{background:#efdbff}.hl-G{background:#b5f5ec}.hl-H{background:#ffd6e7}
   .hl-I4{background:#ffccc7}.hl-AT{background:#ffccc7}.hl-PA{background:#ffaba6}.hl-PD{background:#b5f5ec}
   .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:11.5px}
@@ -248,8 +249,8 @@ function parseDoc(text){
     const txt=m[4].replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
     if(txt){segs.push(txt);tss.push(t);}
   }
-  if(segs.length<3){ // 纯文本回退
-    return text.split(/[\n。！？]/).map(s=>s.trim()).filter(s=>s.length>4).map((s,i)=>({t:null,text:s}));
+  if(segs.length<3){ // 纯文本回退（保留句末标点，保证句子级切分/标注可用）
+    return (text.match(/[^。！？\n]*[。！？]?/g)||[]).map(s=>s.trim()).filter(s=>s.length>4).map((s,i)=>({t:null,text:s}));
   }
   return segs.map((s,i)=>({t:tss[i],text:s}));
 }
@@ -317,9 +318,11 @@ const CAT_RE = {
   '考试':/中考|高考|一模|二模|三模|期中|期末|考试|分数|成绩|录取|批次|志愿/g,
 };
 const HOOK_RE = [
-  {type:'悬念预告', re:/接下来|下一句|下一条|等会|一会儿|最后一点|最后一条|第三点|第二点|第一点|先说结论|三句话|三个关键|重点来了|划重点|记住这句/g},
-  {type:'留人提醒', re:/别划走|先别走|别走开|留在直播间|再听|听我说完|听到最后|别急着|稍等/g},
-  {type:'互动引导', re:/扣个?1|扣1|打个1|评论区|公屏|打字|点赞|点个赞|关注|双击/g},
+  /* 钩子词库已收窄：去掉日常口语词（等会/一会儿/最后一点/再听/稍等/别急着/打字），
+     "关注"必须搭配点/加/灯牌才计入，避免把普通聊天当成钩子 */
+  {type:'悬念预告', re:/下一句|下一条|第[一二三]点|先说结论|三句话|三个关键|重点来了|划重点|记住这句/g},
+  {type:'留人提醒', re:/别划走|先别走|别走开|留在直播间|听我说完|听到最后/g},
+  {type:'互动引导', re:/扣个?\d|打个\d|评论区|公屏|点个?赞|双击|(点|加|记得)关注|关注(主播|一下|灯牌)|灯牌/g},
   {type:'利益钩子', re:/领资料|免费领|福利|名额|限时|白给|送你|加群|进群|资料包/g},
 ];
 const HOOK_GAP={good:3,mild:5,weak:8};   // 分钟：≤3 良好 / ≤5 偏慢 / ≤8 偏弱 / >8 危险
@@ -569,7 +572,7 @@ function render(){
   document.getElementById('hitTableWrap').innerHTML=hits.length?
     summary
     :'<p style="color:var(--green)">✅ 未命中任何规则词——本场从词面上没有可判罚点（注意：话术密度、画面/贴片需另行人工核查）。</p>';
-  // 标注视图（默认只标高/中危，突出重点；低危仅统计，勾选"显示低危提示"后才标出）
+  // 标注视图（对齐参考案例：句子底色=违规程度，词只做荧光，句末合并一个「级别:类别」标签，不再逐词打标）
   const marks=STATE.showLow?hits:hits.filter(h=>h.rule.sev!=='低');
   let ah='';
   chunks.forEach((c,ci)=>{
@@ -577,17 +580,19 @@ function render(){
     let html='';
     sentSegs(c.text).forEach(seg=>{
       const inH=hs.filter(h=>h.start<seg.end&&h.end>seg.start).sort((a,b)=>a.start-b.start);
+      if(!inH.length){html+=esc(c.text.slice(seg.start,seg.end));return;}
       let inner='',pos=seg.start;
       for(const h of inH){
         if(h.end<=pos)continue;
         inner+=esc(c.text.slice(pos,Math.max(pos,h.start)));
-        const mk=MK[h.rule.sev];
-        inner+=`<mark class="${h.rule.cls}">${mk.b}${mk.g}:${esc(c.text.slice(h.start,h.end))}${mk.e}</mark>`;
+        inner+=`<span class="${h.rule.cls}">${esc(c.text.slice(h.start,h.end))}</span>`;
         pos=Math.max(pos,h.end);
       }
       inner+=esc(c.text.slice(pos,seg.end));
       const sev=maxSevIn(hs,seg);
-      html+=sev?`<span style="background:${SENTBG[sev]};border-radius:3px;padding:0 1px">${inner}</span>`:inner;
+      const seen={},tags=[];
+      inH.forEach(h=>{if(!seen[h.rule.id]){seen[h.rule.id]=1;const mk=MK[h.rule.sev];tags.push(mk.b+mk.g+':'+esc(h.rule.cat.split('（')[0])+mk.e);}});
+      html+=`<span style="background:${SENTBG[sev]};border-radius:3px;padding:0 1px">${inner}</span><span class="vtag">${tags.join('')}</span>`;
     });
     ah+=`<div class="para"><span class="t">${fmtT(c.t)}</span>${html}</div>`;
   });
@@ -726,7 +731,7 @@ document.getElementById('dlAnno').onclick=()=>{
   body+='<p><b>核心结论：</b>'+coreVerdict(hits).text+'</p>';
   body+='<h2>一、标注口径与色块说明</h2>';
   body+='<p>【A:词】＝明确违规，依据充分，必须整改；〔B:词〕＝倾向违规，表述委婉或要素不齐，建议整改；〈C:词〉＝提示项，规则未完全成立但存在判定风险。词底色＝违规大类（见下表），与《韦老师聊学习》《别走弯路 初三》两份标注版口径一致。</p>';
-  body+='<p>句子底色＝该句违规程度（按句内最高危词判定）：<span style="background:#ffd9d9">&nbsp;红＝含高危词（句内必改）&nbsp;</span>　<span style="background:#fff1bd">&nbsp;黄＝含中危词（建议改）&nbsp;</span>　<span style="background:#eef1f4">&nbsp;灰＝仅低危词（提示项）&nbsp;</span>；无底色句子＝该句无命中。低危命中（学段词/绝对化等）默认不标注、仅在第②节统计'+(STATE.showLow?'（本次已勾选"显示低危提示"，低危也已标出）':'')+'。</p>';
+  body+='<p>标注口径（对齐参考案例）：①句子底色＝违规程度：<span style="background:#ffd9d9">&nbsp;红＝含高危（必改）&nbsp;</span>　<span style="background:#fff1bd">&nbsp;黄＝含中危（建议改）&nbsp;</span>；②词底色＝违规大类荧光（见下表）；③句末【A:类别】〔B:类别〕＝该句触碰的违规类目，同一句同类违规合并只标一处，不逐词重复。低危命中（学段词/绝对化等）默认不标注、仅在第②节统计'+(STATE.showLow?'（本次已勾选"显示低危提示"，低危也已标出）':'')+'。</p>';
   body+='<table><tr><th>色块</th><th>违规大类</th><th>级别</th><th>统一改写方向</th></tr>';
   (gKeys.length?gKeys:Object.keys(groups)).forEach(k=>{
     const g=groups[k];
@@ -754,24 +759,26 @@ document.getElementById('dlAnno').onclick=()=>{
     body+='<p class="meta">本场未命中已知违规句，逐条改写方向见上表「建议改写句」列。</p>';
   }
   body+='<p class="meta">颜色图例：'+RULES.map(r=>`<span style="background:${bgOf(r.cls)};background-color:${bgOf(r.cls)}">&nbsp;${esc(r.cat.split('（')[0])}&nbsp;</span>`).join(' ')+'</p>';
-  body+='<h2>四、逐段标注（句子按违规程度底色 + 词级标记）</h2>';
+  body+='<h2>四、逐段标注（句子底色＝程度 + 词荧光＝大类 + 句末类目标签）</h2>';
   const exH=STATE.showLow?hits:hits.filter(h=>h.rule.sev!=='低');
   chunks.forEach((c,ci)=>{
     const hs=exH.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
     let html='';
     sentSegs(c.text).forEach(seg=>{
       const inH=hs.filter(h=>h.start<seg.end&&h.end>seg.start).sort((a,b)=>a.start-b.start);
+      if(!inH.length){html+=esc(c.text.slice(seg.start,seg.end));return;}
       let inner='',pos=seg.start;
       for(const h of inH){
         if(h.end<=pos)continue;
         inner+=esc(c.text.slice(pos,Math.max(pos,h.start)));
-        const mk=MK[h.rule.sev];
-        inner+=`<span style="mso-highlight:${HLCOLOR[h.rule.cls]||'yellow'};background:${bgOf(h.rule.cls)};font-weight:bold">${mk.b}${mk.g}:${esc(c.text.slice(h.start,h.end))}${mk.e}</span>`;
+        inner+=`<span style="mso-highlight:${HLCOLOR[h.rule.cls]||'yellow'}">${esc(c.text.slice(h.start,h.end))}</span>`;
         pos=Math.max(pos,h.end);
       }
       inner+=esc(c.text.slice(pos,seg.end));
       const sev=maxSevIn(hs,seg);
-      html+=sev?`<span style="background:${SENTBG[sev]}">${inner}</span>`:inner;
+      const seen={},tags=[];
+      inH.forEach(h=>{if(!seen[h.rule.id]){seen[h.rule.id]=1;const mk=MK[h.rule.sev];tags.push(mk.b+mk.g+':'+esc(h.rule.cat.split('（')[0])+mk.e);}});
+      html+=`<span style="background:${SENTBG[sev]}">${inner}</span><b style="color:#c0392b;font-size:9pt">${tags.join('')}</b>`;
     });
     body+=`<p><span class="t">${fmtT(c.t)} </span>${html}</p>`;
   });
