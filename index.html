@@ -118,7 +118,7 @@
       </div>
       <div id="annoView" style="padding:14px 0 18px;max-height:560px;overflow:auto"></div>
       <div id="finalView" class="hide" style="padding:14px 0 18px;max-height:560px;overflow:auto">
-        <p class="note" style="margin-bottom:8px">只改触碰违规类目的句子：已知违规句自动替换（<span class="applied">绿字</span>），其余高/中危命中点点击后可选择采用模板改写 / 保留原文 / 自行输入；低危提示项（学段词/绝对化等）不改，需要时勾选上方「显示低危提示」。改完点上方「下载调整后成稿」。</p>
+        <p class="note" style="margin-bottom:8px">只改触碰违规类目的句子：已知违规句自动替换（<span class="applied">绿字</span>），其余高/中危命中点点击后可选择采用模板改写 / 保留原文 / 自行输入；低危提示项（学段词/绝对化）与学科词不改正文（只进统计），低危需要时勾选上方「显示低危提示」。改完点上方「下载调整后成稿」。</p>
         <div id="finalBody"></div>
       </div>
     </div>
@@ -573,7 +573,8 @@ function render(){
     summary
     :'<p style="color:var(--green)">✅ 未命中任何规则词——本场从词面上没有可判罚点（注意：话术密度、画面/贴片需另行人工核查）。</p>';
   // 标注视图（对齐参考案例：句子底色=违规程度，词只做荧光，句末合并一个「级别:类别」标签，不再逐词打标）
-  const marks=STATE.showLow?hits:hits.filter(h=>h.rule.sev!=='低');
+  // 学科词（B类）正文不标注，仅进统计与归纳表
+  const marks=hits.filter(h=>h.rule.id!=='B'&&(STATE.showLow||h.rule.sev!=='低'));
   let ah='';
   chunks.forEach((c,ci)=>{
     const hs=marks.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
@@ -605,7 +606,8 @@ function render(){
 function renderFinal(){
   const {chunks,hits}=STATE;
   // 成稿只改「触碰违规类目」的句子：默认高/中危才给出改写点，低危提示项（学段词/绝对化）保持原样，勾选"显示低危提示"后才纳入
-  const fhits=STATE.showLow?hits:hits.filter(h=>h.rule.sev!=='低');
+  // 学科词（B类）不做改写点，仅进统计与归纳表
+  const fhits=hits.filter(h=>h.rule.id!=='B'&&(STATE.showLow||h.rule.sev!=='低'));
   let fh='';
   chunks.forEach((c,ci)=>{
     const text=c.text;
@@ -731,7 +733,7 @@ document.getElementById('dlAnno').onclick=()=>{
   body+='<p><b>核心结论：</b>'+coreVerdict(hits).text+'</p>';
   body+='<h2>一、标注口径与色块说明</h2>';
   body+='<p>【A:词】＝明确违规，依据充分，必须整改；〔B:词〕＝倾向违规，表述委婉或要素不齐，建议整改；〈C:词〉＝提示项，规则未完全成立但存在判定风险。词底色＝违规大类（见下表），与《韦老师聊学习》《别走弯路 初三》两份标注版口径一致。</p>';
-  body+='<p>标注口径（对齐参考案例）：①句子底色＝违规程度：<span style="background:#ffd9d9">&nbsp;红＝含高危（必改）&nbsp;</span>　<span style="background:#fff1bd">&nbsp;黄＝含中危（建议改）&nbsp;</span>；②词底色＝违规大类荧光（见下表）；③句末【A:类别】〔B:类别〕＝该句触碰的违规类目，同一句同类违规合并只标一处，不逐词重复。低危命中（学段词/绝对化等）默认不标注、仅在第②节统计'+(STATE.showLow?'（本次已勾选"显示低危提示"，低危也已标出）':'')+'。</p>';
+  body+='<p>标注口径（对齐参考案例）：①句子底色＝违规程度：<span style="background:#ffd9d9">&nbsp;红＝含高危（必改）&nbsp;</span>　<span style="background:#fff1bd">&nbsp;黄＝含中危（建议改）&nbsp;</span>；②词底色＝违规大类荧光（见下表）；③句末【A:类别】〔B:类别〕＝该句触碰的违规类目，同一句同类违规合并只标一处，不逐词重复。低危命中（学段词/绝对化等）与学科词（B类）默认不在正文标注，仅在第①②节统计'+(STATE.showLow?'（本次已勾选"显示低危提示"，低危也已标出）':'')+'。</p>';
   body+='<table><tr><th>色块</th><th>违规大类</th><th>级别</th><th>统一改写方向</th></tr>';
   (gKeys.length?gKeys:Object.keys(groups)).forEach(k=>{
     const g=groups[k];
@@ -760,7 +762,7 @@ document.getElementById('dlAnno').onclick=()=>{
   }
   body+='<p class="meta">颜色图例：'+RULES.map(r=>`<span style="background:${bgOf(r.cls)};background-color:${bgOf(r.cls)}">&nbsp;${esc(r.cat.split('（')[0])}&nbsp;</span>`).join(' ')+'</p>';
   body+='<h2>四、逐段标注（句子底色＝程度 + 词荧光＝大类 + 句末类目标签）</h2>';
-  const exH=STATE.showLow?hits:hits.filter(h=>h.rule.sev!=='低');
+  const exH=hits.filter(h=>h.rule.id!=='B'&&(STATE.showLow||h.rule.sev!=='低'));
   chunks.forEach((c,ci)=>{
     const hs=exH.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
     let html='';
