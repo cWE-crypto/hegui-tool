@@ -54,6 +54,7 @@
   .note{font-size:12px;color:var(--sub);margin-top:6px}
   .hl-A{background:#ffd6d6}.hl-B{background:#fff1b8}.hl-C{background:#ffe0f0}.hl-D{background:#d9f7be}
   .vtag{color:#c0392b;font-size:11.5px;font-weight:bold;margin-left:2px}
+  .hl-ai{background:#d6e4ff}
   .hl-E{background:#e8e8e8}.hl-F{background:#efdbff}.hl-G{background:#b5f5ec}.hl-H{background:#ffd6e7}
   .hl-I4{background:#ffccc7}.hl-AT{background:#ffccc7}.hl-PA{background:#ffaba6}.hl-PD{background:#b5f5ec}
   .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:11.5px}
@@ -100,7 +101,7 @@
     </div>
 
     <div class="card">
-      <h2>③ 违规点清单 <span class="tag" id="hitTag"></span></h2>
+      <h2>③ 违规点清单 <span class="tag" id="hitTag"></span><button id="aiScan" style="float:right;padding:5px 12px;font-size:12.5px">🧠 语义扫描</button></h2>
       <div id="hitTableWrap"></div>
       <div class="legend">
         <span class="hl-A">A类 暗示直播课</span><span class="hl-B">B类 学段学科</span><span class="hl-D">D类 师资背景</span>
@@ -131,6 +132,17 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
+
+<div id="aiPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;max-width:860px;width:94%;max-height:88vh;overflow:auto;padding:18px 20px">
+    <h3 style="margin-top:0">🧠 语义扫描（AI 判定）</h3>
+    <p class="note" style="margin-bottom:8px">三步：① 复制下方提示词 → 发给任意 AI（WorkBuddy / 豆包 / Kimi 均可）；② 把 AI 返回的 JSON 粘到下面输入框；③ 点「合并渲染」。语义命中会以<span class="hl-ai">&nbsp;蓝色荧光&nbsp;</span>标注、按同类纳入统计与导出，可与词库结果叠加。</p>
+    <textarea id="aiPrompt" readonly style="width:100%;height:200px;font-size:12px;font-family:Consolas,monospace;border:1px solid #ddd;border-radius:6px;padding:8px"></textarea>
+    <div style="margin:8px 0"><button id="aiCopy" style="padding:6px 14px;font-size:13px">📋 复制提示词</button><span style="color:#888;font-size:12px;margin-left:8px">提示词已内置《高途集团-抖音直播违规说明》八类口径 + 语义判定要求</span></div>
+    <textarea id="aiResult" placeholder="把 AI 返回的 JSON 粘贴到这里（以 [ 开头，以 ] 结尾）" style="width:100%;height:110px;font-size:12px;font-family:Consolas,monospace;border:1px solid #ddd;border-radius:6px;padding:8px"></textarea>
+    <div style="margin-top:10px"><button id="aiApply" style="padding:6px 16px;font-size:13px">✅ 合并渲染</button> <button id="aiClose" style="background:#eee;color:#333;padding:6px 14px;font-size:13px">关闭</button> <span id="aiErr" style="color:#d63031;font-size:12.5px;margin-left:8px"></span></div>
+  </div>
+</div>
 
 <script>
 /* ================= 规则库（源自《高途集团-抖音直播违规说明》+ 5.8 案例库） ================= */
@@ -588,7 +600,7 @@ function render(){
     :'<p style="color:var(--green)">✅ 未命中任何规则词——本场从词面上没有可判罚点（注意：话术密度、画面/贴片需另行人工核查）。</p>';
   // 标注视图（对齐参考案例：句子底色=违规程度，词只做荧光，句末合并一个「级别:类别」标签，不再逐词打标）
   // 学科词（B类）正文不标注，仅进统计与归纳表
-  const marks=hits.filter(h=>h.rule.id!=='B'&&(STATE.showLow||h.rule.sev!=='低'));
+  const marks=hits.filter(h=>h.rule.id!=='B'&&h.rule.id!=='AIB'&&(STATE.showLow||h.rule.sev!=='低'));
   let ah='';
   chunks.forEach((c,ci)=>{
     const hs=marks.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
@@ -621,7 +633,7 @@ function renderFinal(){
   const {chunks,hits}=STATE;
   // 成稿只改「触碰违规类目」的句子：默认高/中危才给出改写点，低危提示项（学段词/绝对化）保持原样，勾选"显示低危提示"后才纳入
   // 学科词（B类）不做改写点，仅进统计与归纳表
-  const fhits=hits.filter(h=>h.rule.id!=='B'&&(STATE.showLow||h.rule.sev!=='低'));
+  const fhits=hits.filter(h=>h.rule.id!=='B'&&h.rule.id!=='AIB'&&(STATE.showLow||h.rule.sev!=='低'));
   let fh='';
   chunks.forEach((c,ci)=>{
     const text=c.text;
@@ -687,6 +699,68 @@ function setTab(which){
   document.getElementById('finalView').classList.toggle('hide',which!=='final');
 }
 function renderTabs(){setTab('anno');}
+
+/* ================= 语义扫描（AI 判定）：提示词生成 + 结果合并 ================= */
+const AICAT={A:'A类 暗示直播课',B:'B类 学科指向',C:'C类 效果承诺升学',D:'D类 师资背景',E:'E类 绝对化用语',F:'F类 焦虑营销',G:'G类 私域导流',H:'H类 虚假促销'};
+function buildAiPrompt(){
+  const text=STATE.chunks.map(c=>c.text).join('\n');
+  return ['你是抖音教育直播合规审核专家，依据《高途集团-抖音直播违规说明》逐句判定以下直播文稿。八类违规：',
+  'A 暗示直播课/货不对板：售卖阶段提"直播/回放"；N节未标"录制"；二讲/主讲/1v1/训练营/试听等授课形式暗示',
+  'B 学段与学科指向：语文/数学等学科词，小学初中高中学段词，中高考考试词',
+  'C 效果承诺与升学暗示：保过/提分/上重点/考不上/影响升学/决定未来等保证性或后果性表述',
+  'D 师资与合作背景：教龄/班主任年限/毕业院校/状元/名师头衔等身份背书',
+  'E 绝对化用语：第一/唯一/顶级/百分百/国家级/最X 等',
+  'F 焦虑营销：制造恐慌与恐吓框架——生死线/淘汰/吃亏/拖垮/影响未来/再不X就Y/耽误孩子/白学等',
+  'G 私域导流与私下交易：微信/私信/进群/粉丝群/二维码/手机号/绕过平台缴费/站外指引',
+  'H 虚假促销与稀缺性话术：限时/限量/仅剩/最后X/先到先得/倒计时/涨价',
+  '',
+  '【判定要求】按语义判断而不是字面匹配：换说法的同类表述也要判出来；忽略文本中的标注符号与时间戳；一句命中多类可输出多条。',
+  '【输出格式】只输出 JSON 数组，不要任何其他文字：[{"s":"命中原句（必须与原文完全一致，便于定位）","cat":"A|B|C|D|E|F|G|H","sev":"高|中|低","why":"不超过25字的理由"}]。全篇无违规则输出 []',
+  '',
+  '【直播文稿全文】',
+  text].join('\n');
+}
+function openAiPanel(){
+  document.getElementById('aiPrompt').value=buildAiPrompt();
+  document.getElementById('aiResult').value='';
+  document.getElementById('aiErr').textContent='';
+  const p=document.getElementById('aiPanel');p.style.display='flex';
+}
+document.getElementById('aiScan').onclick=()=>{if(!STATE){toast('请先扫描文稿');return;}openAiPanel();};
+document.getElementById('aiClose').onclick=()=>{document.getElementById('aiPanel').style.display='none';};
+document.getElementById('aiCopy').onclick=()=>{
+  const ta=document.getElementById('aiPrompt');ta.select();
+  try{document.execCommand('copy');toast('提示词已复制');}catch(e){}
+  if(navigator.clipboard)navigator.clipboard.writeText(ta.value).then(()=>toast('提示词已复制'),()=>{});
+};
+document.getElementById('aiApply').onclick=()=>{
+  const err=document.getElementById('aiErr');
+  const t=document.getElementById('aiResult').value;
+  const i=t.indexOf('['),j=t.lastIndexOf(']');
+  err.textContent='';
+  if(i<0||j<=i){err.textContent='没有找到 JSON 数组（应以 [ 开头、] 结尾）';return;}
+  let arr;try{arr=JSON.parse(t.slice(i,j+1));}catch(e){err.textContent='JSON 解析失败：'+e.message;return;}
+  const full=STATE.chunks.map(c=>c.text);
+  const exists={};STATE.hits.forEach(h=>{exists[h.ci+'_'+h.start+'_'+h.text]=1;});
+  const added=[];
+  arr.forEach(r=>{
+    if(!r||!r.s||!AICAT[r.cat])return;
+    for(let ci=0;ci<full.length;ci++){
+      const idx=full[ci].indexOf(r.s);
+      if(idx>=0&&!exists[ci+'_'+idx+'_'+r.s]){
+        exists[ci+'_'+idx+'_'+r.s]=1;
+        added.push({ci,start:idx,end:idx+r.s.length,text:r.s,rule:{id:'AI'+r.cat,cls:'hl-ai',cat:'语义·'+AICAT[r.cat],
+          sev:(r.sev&&['高','中','低'].indexOf(r.sev)>=0)?r.sev:'中',tpl:'语义判定：'+(r.why||'同类违规表述，按对应类目改写')}});
+        break;
+      }
+    }
+  });
+  if(!added.length){err.textContent='没有定位到任何命中句（确认 AI 返回的 s 字段与原文一致）';return;}
+  STATE.hits=STATE.hits.concat(added);
+  document.getElementById('aiPanel').style.display='none';
+  render();
+  toast('🧠 语义命中 '+added.length+' 处已合并（蓝色荧光）');
+};
 
 /* ================= Word 导出 ================= */
 function wordDoc(title,bodyHtml){
@@ -776,7 +850,7 @@ document.getElementById('dlAnno').onclick=()=>{
   }
   body+='<p class="meta">颜色图例：'+RULES.map(r=>`<span style="background:${bgOf(r.cls)};background-color:${bgOf(r.cls)}">&nbsp;${esc(r.cat.split('（')[0])}&nbsp;</span>`).join(' ')+'</p>';
   body+='<h2>四、逐段标注（句子底色＝程度 + 词荧光＝大类 + 句末类目标签）</h2>';
-  const exH=hits.filter(h=>h.rule.id!=='B'&&(STATE.showLow||h.rule.sev!=='低'));
+  const exH=hits.filter(h=>h.rule.id!=='B'&&h.rule.id!=='AIB'&&(STATE.showLow||h.rule.sev!=='低'));
   chunks.forEach((c,ci)=>{
     const hs=exH.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
     let html='';
