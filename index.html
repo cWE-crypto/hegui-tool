@@ -710,7 +710,15 @@ document.getElementById('dlAnno').onclick=()=>{
   const gKeys=Object.keys(groups).sort((a,b)=>_sevRank[groups[a].rule.sev]-_sevRank[groups[b].rule.sev]||groups[b].n-groups[a].n);
   let body=`<h1>${esc(filename)}——违规点标注 + 优化后句子</h1><p class="meta">生成时间：${new Date().toLocaleString('zh-CN')}｜依据《高途集团-抖音直播违规说明》A–H 八类 + 1.4 + 5.8 案例库</p>`;
   body+='<p><b>核心结论：</b>'+coreVerdict(hits).text+'</p>';
-  body+=`<h2>一、违规同类归纳（${gKeys.length} 类，按严重度排序）</h2><table><tr><th>官方归类</th><th>严重度</th><th>处数</th><th>命中词（去重）</th><th>统一改写方向</th></tr>`;
+  body+='<h2>一、标注口径与色块说明</h2>';
+  body+='<p>【A:词】＝明确违规，依据充分，必须整改；〔B:词〕＝倾向违规，表述委婉或要素不齐，建议整改；〈C:词〉＝提示项，规则未完全成立但存在判定风险。词底色＝违规大类（见下表），与《韦老师聊学习》《别走弯路 初三》两份标注版口径一致。</p>';
+  body+='<table><tr><th>色块</th><th>违规大类</th><th>级别</th><th>统一改写方向</th></tr>';
+  (gKeys.length?gKeys:Object.keys(groups)).forEach(k=>{
+    const g=groups[k];
+    body+=`<tr><td><span style="mso-highlight:${HLCOLOR[g.rule.cls]||'yellow'}">&nbsp;&nbsp;&nbsp;&nbsp;</span></td><td>${esc(k)}</td><td>${MK[g.rule.sev].g} 级</td><td>${esc(g.rule.tpl)}</td></tr>`;
+  });
+  body+='</table>';
+  body+=`<h2>二、违规同类归纳（${gKeys.length} 类，按严重度排序）</h2><table><tr><th>官方归类</th><th>严重度</th><th>处数</th><th>命中词（去重）</th><th>统一改写方向</th></tr>`;
   gKeys.forEach(k=>{
     const g=groups[k];
     const words=Object.keys(g.words).sort((a,b)=>g.words[b]-g.words[a]);
@@ -722,7 +730,7 @@ document.getElementById('dlAnno').onclick=()=>{
   // 二、原句 → 优化后句子 对照表（全篇去重）
   const seen={},pairsAll=[];
   chunks.forEach(c=>{knownPairsIn(c.text).forEach(k=>{if(!seen[k.from]){seen[k.from]=1;pairsAll.push(k);}});});
-  body+=`<h2>二、原句 → 优化后句子 对照表（${pairsAll.length} 组）</h2>`;
+  body+=`<h2>三、原句 → 优化后句子 对照表（${pairsAll.length} 组）</h2>`;
   if(pairsAll.length){
     body+='<table><tr><th style="width:38%">原句（违规表达）</th><th style="width:42%">优化后句子（可照读）</th><th>改动依据</th></tr>';
     pairsAll.forEach(k=>{body+=`<tr><td>${esc(k.from)}</td><td><b style="color:#00693e">${esc(k.to)}</b></td><td>${esc(k.cat)}</td></tr>`;});
@@ -731,13 +739,14 @@ document.getElementById('dlAnno').onclick=()=>{
     body+='<p class="meta">本场未命中已知违规句，逐条改写方向见上表「建议改写句」列。</p>';
   }
   body+='<p class="meta">颜色图例：'+RULES.map(r=>`<span style="background:${bgOf(r.cls)};background-color:${bgOf(r.cls)}">&nbsp;${esc(r.cat.split('（')[0])}&nbsp;</span>`).join(' ')+'</p>';
-  body+='<h2>三、逐段标注</h2>';
+  body+='<h2>四、逐段标注（词级高亮）</h2>';
   chunks.forEach((c,ci)=>{
     const hs=hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
     let html='',pos=0;
     for(const h of hs){
       html+=esc(c.text.slice(pos,h.start));
-      html+=`<span style="background:${bgOf(h.rule.cls)};background-color:${bgOf(h.rule.cls)};font-weight:bold">${esc(c.text.slice(h.start,h.end))}</span><span style="color:#c0392b;font-size:8.5pt"> [${h.rule.sev}·${esc(h.rule.cat)}]</span>`;
+      const mk=MK[h.rule.sev];
+      html+=`<span style="mso-highlight:${HLCOLOR[h.rule.cls]||'yellow'};background:${bgOf(h.rule.cls)};font-weight:bold">${mk.b}${mk.g}:${esc(c.text.slice(h.start,h.end))}${mk.e}</span>`;
       pos=h.end;
     }
     html+=esc(c.text.slice(pos));
@@ -745,7 +754,7 @@ document.getElementById('dlAnno').onclick=()=>{
   });
   // 五、密度诊断
   const _d=computeDensity(STATE.paras), _jd=judgeDensity(_d.r40), _jg=judgeGap(_d.hookSent.length?_d.gapMax/60:null);
-  body+='<h2>四、密度诊断（学科密度 / 40秒扎堆 / 钩子节奏）</h2>';
+  body+='<h2>五、密度诊断（学科密度 / 40秒扎堆 / 钩子节奏）</h2>';
   body+=`<p><b>判定：${_jd.l}</b>　${_jd.n}</p>`;
   body+='<table><tr><th>指标</th><th>本场</th><th>外部均值线</th><th>违规场均</th><th>判定</th></tr>';
   body+=`<tr><td>40秒内≥3类占比</td><td>${(_d.r40*100).toFixed(1)}%</td><td>44.4%</td><td>72.6%</td><td>${_jd.l}</td></tr>`;
@@ -763,6 +772,9 @@ document.getElementById('dlAnno').onclick=()=>{
   logUse('export-anno');
   toast('已下载：'+filename.replace(/\.[^.]+$/,'')+'-违规标注-含优化句.doc（见浏览器下载列表）');
 };
+/* 参考标注口径：Word 原生荧光笔色 + A/B/C 三级标记（高=A【】/中=B〔〕/低=C〈〉） */
+const HLCOLOR={A:'yellow',B:'magenta',B2:'cyan',C:'red',D:'green',E:'lightGray',F:'darkYellow',G:'darkCyan',H:'brightGreen',I4:'darkMagenta',I4b:'darkGreen',PA:'darkRed',PD:'blue',PC:'darkBlue'};
+const MK={'高':{b:'【',e:'】',g:'A'},'中':{b:'〔',e:'〕',g:'B'},'低':{b:'〈',e:'〉',g:'C'}};
 function bgOf(cls){return {A:'#ffd6d6',B:'#fff1b8',C:'#ffe0f0',D:'#d9f7be',E:'#e8e8e8',F:'#efdbff',G:'#b5f5ec',H:'#ffd6e7',I4:'#ffccc7',I4b:'#ffccc7',PA:'#ffaba6',PD:'#b5f5ec',PC:'#b5f5ec'}[cls]||'#ffff99';}
 document.getElementById('dlFinal').onclick=()=>{
   const {chunks,filename}=STATE;
