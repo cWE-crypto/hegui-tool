@@ -117,7 +117,7 @@
       </div>
       <div id="annoView" style="padding:14px 0 18px;max-height:560px;overflow:auto"></div>
       <div id="finalView" class="hide" style="padding:14px 0 18px;max-height:560px;overflow:auto">
-        <p class="note" style="margin-bottom:8px">已自动替换已知违规句（<span class="applied">绿字</span>）。其余命中点点击后可选择采用模板改写 / 保留原文 / 自行输入。改完点上方「下载调整后成稿」。</p>
+        <p class="note" style="margin-bottom:8px">只改触碰违规类目的句子：已知违规句自动替换（<span class="applied">绿字</span>），其余高/中危命中点点击后可选择采用模板改写 / 保留原文 / 自行输入；低危提示项（学段词/绝对化等）不改，需要时勾选上方「显示低危提示」。改完点上方「下载调整后成稿」。</p>
         <div id="finalBody"></div>
       </div>
     </div>
@@ -599,6 +599,8 @@ function render(){
 }
 function renderFinal(){
   const {chunks,hits}=STATE;
+  // 成稿只改「触碰违规类目」的句子：默认高/中危才给出改写点，低危提示项（学段词/绝对化）保持原样，勾选"显示低危提示"后才纳入
+  const fhits=STATE.showLow?hits:hits.filter(h=>h.rule.sev!=='低');
   let fh='';
   chunks.forEach((c,ci)=>{
     const text=c.text;
@@ -615,7 +617,7 @@ function renderFinal(){
     const overlapsKnown=h=>known.some(k=>h.start<k.end&&h.end>k.start);
     // 2) 剩余命中（互不重叠）→ 建议点
     const rest=[];
-    for(const h of hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start)){
+    for(const h of fhits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start)){
       if(overlapsKnown(h))continue;
       if(rest.some(x=>h.start<x.end&&h.end>x.start))continue;
       rest.push(h);
