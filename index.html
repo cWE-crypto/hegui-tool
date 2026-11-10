@@ -88,6 +88,7 @@
   <div id="result" class="hide">
     <div class="card">
       <h2>② 场次概览</h2>
+      <div id="verdictBox" style="margin-bottom:10px"></div>
       <div class="stats" id="statCards"></div>
       <div id="density" style="font-size:12.5px;color:var(--sub)"></div>
     </div>
@@ -262,6 +263,43 @@ function chunk(paras){
 }
 function fmtT(t){if(t===null||t===undefined)return'';const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':');}
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* ================= 核心违规一句话结论 =================
+   按「判罚现实性」排序：平台对线类（单条举报可判）> 暗示直播课 > 私域导流 > 学科点名 > 提分禁词 > 师资 > 学校评价 > 逼单 > 焦虑 > 绝对化 > 学段词 */
+const VERDICT_ORDER=[
+  {ids:['PA','PD','PC'],label:'与观众对线的人身攻击 / 贬损（平台「不友善内容」）',why:'这类不靠话术密度，一条观众举报+人工复核即可判罚（警告～封禁1天）',color:'#d63031'},
+  {ids:['A'],label:'口播暗示直播课 / 货不对板',why:'K12 品类直接判罚点，与密度无关',color:'#d63031'},
+  {ids:['G'],label:'私域导流与私下交易',why:'口播/字幕/评论区出现任一即违规',color:'#d63031'},
+  {ids:['B'],label:'学科词直接点名',why:'K12 最高危类目，接商品/卖课场景必须全部清除',color:'#e67e22'},
+  {ids:['C','I4'],label:'效果承诺与极限词（提分 / 保分 / 必过）',why:'1.4 明列禁词',color:'#d63031'},
+  {ids:['D'],label:'师资身份与年限表述',why:'需人设资质背书支撑，否则按虚假资质处理',color:'#e67e22'},
+  {ids:['I4b'],label:'评价 / 贬损学校',why:'1.4 明列「不评价学校与对比成绩」',color:'#e67e22'},
+  {ids:['H'],label:'限时限量逼单话术',why:'虚假促销类判罚',color:'#e67e22'},
+  {ids:['F'],label:'焦虑营销（淘汰 / 来不及）',why:'制造教育焦虑可触发限流 / 封带货',color:'#e67e22'},
+  {ids:['E'],label:'绝对化用语',why:'广告法红线，多为叠加项',color:'#ad6800'},
+  {ids:['B2'],label:'学段词（规划场可保留）',why:'一旦接商品 / 卖课必须替换',color:'#6b7280'},
+];
+function coreVerdict(hits){
+  if(!hits.length)return {text:'✅ 词面上没有可判罚点——本场风险只剩话术密度、画面/贴片，需人工核查。',html:'<div style="border-left:4px solid #00693e;background:#f0f9f4;padding:8px 12px;border-radius:0 6px 6px 0"><b style="color:#00693e">✅ 词面上没有可判罚点</b>——本场风险只剩话术密度、画面/贴片，需人工核查。</div>'};
+  const byId={};
+  hits.forEach(h=>{byId[h.rule.id]=byId[h.rule.id]||{n:0,high:0};byId[h.rule.id].n++;if(h.rule.sev==='高')byId[h.rule.id].high++;});
+  let main=null,mainHits=0,mainHigh=0,second=null,secondHits=0;
+  for(const g of VERDICT_ORDER){
+    let n=0,hi=0;
+    g.ids.forEach(id=>{if(byId[id]){n+=byId[id].n;hi+=byId[id].high;}});
+    if(n>0){
+      if(!main){main=g;mainHits=n;mainHigh=hi;}
+      else if(!second){second=g;secondHits=n;break;}
+    }
+  }
+  const high=hits.filter(h=>h.rule.sev==='高').length;
+  const others=hits.length-mainHits;
+  let txt='本场核心违规：<b>'+main.label+'</b>（'+mainHits+' 处'+(mainHigh?'，其中高危 '+mainHigh+' 处':'')+'）——'+main.why+'。';
+  if(second)txt+='其余以「'+second.label+'」（'+secondHits+' 处）为主；';
+  txt+='全场共命中 '+hits.length+' 处（高 '+high+'）。';
+  const html='<div style="border-left:4px solid '+main.color+';background:#fafbfc;padding:8px 12px;border-radius:0 6px 6px 0;font-size:13.5px"><b style="color:'+main.color+'">为什么违规（一句话）：</b>'+txt+'</div>';
+  return {html:html,text:txt};
+}
 
 /* ================= 密度判定：学科密度 / 40秒扎堆 / 钩子间隔 =================
    阈值来源：《密度具象化-秒级规则》《扎堆规则》《不违规的密度-安全基准值》(21场实测)
@@ -509,7 +547,8 @@ function render(){
     ['段落数',chunks.length,''],['字数',chunks.reduce((a,c)=>a+c.text.length,0),''],
     ['命中总数',hits.length,hits.length?'warn':''],['高危',high,high?'warn':''],['中危',mid,''],['低危',low,''],
   ].map(([l,v,w])=>`<div class="stat ${w}"><b>${v}</b><span>${l}</span></div>`).join('');
-  document.getElementById('density').textContent='命中的风险类型：'+(cats.length?cats.join('、'):'无');
+  document.getElementById('verdictBox').innerHTML=coreVerdict(hits).html;
+    document.getElementById('density').textContent='命中的风险类型：'+(cats.length?cats.join('、'):'无');
   document.getElementById('hitTag').textContent='共 '+hits.length+' 处（高'+high+'/中'+mid+'/低'+low+'）';
   // 清单表
   let rows='';
@@ -689,6 +728,7 @@ document.getElementById('dlAnno').onclick=()=>{
   });
   // 四、密度诊断
   const _d=computeDensity(STATE.paras), _jd=judgeDensity(_d.r40), _jg=judgeGap(_d.hookSent.length?_d.gapMax/60:null);
+  body+='<p><b>核心结论：</b>'+coreVerdict(hits).text+'</p>';
   body+='<h2>四、密度诊断（学科密度 / 40秒扎堆 / 钩子节奏）</h2>';
   body+=`<p><b>判定：${_jd.l}</b>　${_jd.n}</p>`;
   body+='<table><tr><th>指标</th><th>本场</th><th>外部均值线</th><th>违规场均</th><th>判定</th></tr>';
