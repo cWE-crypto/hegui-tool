@@ -136,10 +136,11 @@
 /* ================= 规则库（源自《高途集团-抖音直播违规说明》+ 5.8 案例库） ================= */
 const RULES = [
  { id:'A', cls:'hl-A', cat:'A类 暗示直播课/货不对板', sev:'高',
-   src:'《高途违规说明》1.1/1.3/A类：售卖课程场景不得提"直播"；节/课/讲未标"录制"直接违规',
-   tpl:'售卖课程阶段不提"直播"；凡涉及"节/课/讲"必须并列标注「录制」；禁用二讲/主讲/1v1/私教/训练营等伪装词',
+   src:'《高途违规说明》1.1/1.3/A类：售卖阶段句子内不得出现"直播/回放"类字眼；节/课/讲未标"录制"直接违规',
+   tpl:'售卖阶段不提"直播/回放"；凡涉及"节/课/讲"必须并列标注「录制」；禁用二讲/主讲/1v1/私教/训练营等伪装词',
    pats:[
-     /直[播波]\s*(课|讲座|营|ke|K)|直\s*某\s*播|直zhi播|zhi播|lu播|直播ke|纯\s*Z\s*播|录播|可回放|回放|随时看/g,
+     {re:/直播|回放|随时看/g,need:/课|讲座|节|训练营|集训营|小灶|资料|题|下单|链接|小黄车|购物车|拍|抢|秒杀|名额|报名|福利|优惠|价格|元|客服|上车|领取|讲/g},
+     /直\s*某\s*播|直zhi播|zhi播|lu播|直播ke|纯\s*Z\s*播|录播|可回放|支持回放/g,
      /\d+\s*节(课|讲座)?|\d+\s*讲|小灶|二讲|主讲|私教|1v1|one\s*on\s*one|开摄像头|有互动有答疑|训练营|集训营|试听|试学/g ] },
  { id:'B', cls:'hl-B', cat:'B类 学段与学科指向', sev:'中',
    src:'《高途违规说明》二、B类（K12特有·最高危）：口播/贴片含学科词均可能判违规',
@@ -478,9 +479,16 @@ function scanChunks(chunks){
   const hits=[];
   chunks.forEach((c,ci)=>{
     for(const rule of RULES){
-      for(const re of rule.pats){
+      for(const pat of rule.pats){
+        const re=pat.re||pat;const need=pat.need||null;
         re.lastIndex=0;let m;
         while((m=re.exec(c.text))){
+          if(need){ // 语境条件：命中词所在句子必须同时出现语境词（如售卖阶段才算提"直播"）
+            const seg=sentSegs(c.text).find(s=>m.index>=s.start&&m.index<s.end);
+            const ctx=seg?c.text.slice(seg.start,seg.end):c.text;
+            need.lastIndex=0;
+            if(!need.test(ctx))continue;
+          }
           hits.push({ci,start:m.index,end:m.index+m[0].length,text:m[0],rule});
         }
       }
