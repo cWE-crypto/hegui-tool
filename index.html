@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>话术合规官 · 直播文稿违规标注工具</title>
+<style>
+  :root{
+    --bg:#f5f6f8;--card:#ffffff;--line:#e5e7eb;--txt:#1f2329;--sub:#6b7280;
+    --red:#d63031;--orange:#e67e22;--green:#00693e;--blue:#0958d9;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.7}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 16px 60px}
+  header{background:linear-gradient(135deg,#1f2a44,#2c3e6b);color:#fff;border-radius:12px;padding:22px 24px;margin-bottom:16px}
+  header h1{font-size:20px;margin-bottom:4px}
+  header p{font-size:12.5px;opacity:.85}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+  .card h2{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .card h2 .tag{font-size:11px;background:#eef2ff;color:#4353ff;border-radius:4px;padding:1px 7px;font-weight:normal}
+  label{font-size:13px;color:var(--sub)}
+  input[type=text]{padding:7px 10px;border:1px solid var(--line);border-radius:6px;font-size:14px;width:200px}
+  input[type=file]{font-size:13px}
+  button{background:#2c3e6b;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:14px;cursor:pointer}
+  button:hover{background:#1f2a44}
+  button.ghost{background:#fff;color:#2c3e6b;border:1px solid #2c3e6b}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  textarea{width:100%;min-height:120px;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+  .stat{flex:1;min-width:110px;background:#f8f9fb;border:1px solid var(--line);border-radius:8px;padding:10px 12px;text-align:center}
+  .stat b{display:block;font-size:22px}
+  .stat span{font-size:12px;color:var(--sub)}
+  .stat.warn b{color:var(--red)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  th{background:#f1f3f7;font-weight:600;white-space:nowrap}
+  td.time{white-space:nowrap;color:var(--sub);font-size:12px}
+  .sev-高{color:#fff;background:var(--red);border-radius:4px;padding:0 6px;font-size:11.5px;white-space:nowrap}
+  .sev-中{color:#fff;background:var(--orange);border-radius:4px;padding:0 6px;font-size:11.5px;white-space:nowrap}
+  .sev-低{color:#5b3a00;background:#ffe7ba;border-radius:4px;padding:0 6px;font-size:11.5px;white-space:nowrap}
+  .src{color:#0958d9;font-size:11.5px}
+  .para{margin:8px 0;padding:8px 12px;border-left:3px solid var(--line);background:#fafbfc;border-radius:0 6px 6px 0;font-size:13.5px}
+  .para .t{color:#98a1b3;font-size:11.5px;margin-right:8px;font-weight:bold}
+  mark{padding:0 2px;border-radius:3px}
+  .fixbtn{font-size:11px;padding:1px 8px;margin-left:4px;border-radius:4px;border:1px solid #00693e;background:#e8f5ee;color:#00693e;cursor:pointer}
+  .applied{background:#e8f5ee;color:#00693e;text-decoration:none;border-radius:3px;padding:0 2px;font-weight:bold}
+  .kept{background:#fff7e6;color:#ad6800;border-radius:3px;padding:0 2px}
+  .tabs{display:flex;gap:8px;margin:14px 0 0}
+  .tabs button{border-radius:8px 8px 0 0}
+  .tabs button.on{background:#1f2a44}
+  .hide{display:none}
+  .toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:#1f2a44;color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;display:none;z-index:99}
+  .note{font-size:12px;color:var(--sub);margin-top:6px}
+  .hl-A{background:#ffd6d6}.hl-B{background:#fff1b8}.hl-C{background:#ffe0f0}.hl-D{background:#d9f7be}
+  .hl-E{background:#e8e8e8}.hl-F{background:#efdbff}.hl-G{background:#b5f5ec}.hl-H{background:#ffd6e7}
+  .hl-I4{background:#ffccc7}.hl-AT{background:#ffccc7}.hl-PA{background:#ffaba6}.hl-PD{background:#b5f5ec}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:11.5px}
+  .legend span{padding:1px 8px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎙️ 话术合规官 · 直播文稿违规标注工具</h1>
+    <p>依据《高途集团-抖音直播违规说明》A–H 八类 + 1.4 合规要求 + 5.8 案例库口径 · 上传文稿 → 自动标注 → 生成调整后可照读成稿</p>
+  </header>
+
+  <div class="card">
+    <h2>① 基本信息 <span class="tag">每次使用都会记录</span></h2>
+    <div class="row">
+      <label>操作人：</label><input type="text" id="operator" placeholder="填写你的名字，如：小王">
+      <label style="margin-left:16px">上传文稿：</label><input type="file" id="file" accept=".doc,.docx,.txt,.md,.html,.htm">
+      <span style="color:var(--sub);font-size:12px">支持直播导出的 .doc（Word网页版）与纯文本</span>
+    </div>
+    <div style="margin-top:10px">
+      <label>或直接粘贴口播文本：</label>
+      <textarea id="paste" placeholder="把口播稿粘贴到这里（可含 00:00:00 时间戳，也可不含）"></textarea>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="scanBtn">🔍 开始扫描标注</button>
+      <button id="dlAnno" class="ghost" disabled>⬇️ 下载标注版 .doc</button>
+      <button id="dlFinal" class="ghost" disabled>⬇️ 下载调整后成稿 .doc</button>
+      <span id="scanStatus" style="color:var(--sub);font-size:12.5px"></span>
+    </div>
+  </div>
+
+  <div id="result" class="hide">
+    <div class="card">
+      <h2>② 场次概览</h2>
+      <div class="stats" id="statCards"></div>
+      <div id="density" style="font-size:12.5px;color:var(--sub)"></div>
+    </div>
+
+    <div class="card">
+      <h2>③ 违规点清单 <span class="tag" id="hitTag"></span></h2>
+      <div id="hitTableWrap"></div>
+      <div class="legend">
+        <span class="hl-A">A类 暗示直播课</span><span class="hl-B">B类 学段学科</span><span class="hl-D">D类 师资背景</span>
+        <span class="hl-E">E类 绝对化</span><span class="hl-F">F类 焦虑</span><span class="hl-G">G类 私域导流</span>
+        <span class="hl-H">H类 虚假促销</span><span class="hl-I4">1.4 条款</span><span class="hl-PA">平台·人身攻击</span><span class="hl-PD">平台·贬损群体</span>
+      </div>
+    </div>
+
+    <div class="card" style="padding-bottom:0">
+      <div class="tabs">
+        <button id="tabAnno" class="on">④ 标注版全文</button>
+        <button id="tabFinal">⑤ 调整后成稿</button>
+      </div>
+      <div id="annoView" style="padding:14px 0 18px;max-height:560px;overflow:auto"></div>
+      <div id="finalView" class="hide" style="padding:14px 0 18px;max-height:560px;overflow:auto">
+        <p class="note" style="margin-bottom:8px">已自动替换已知违规句（<span class="applied">绿字</span>）。其余命中点点击后可选择采用模板改写 / 保留原文 / 自行输入。改完点上方「下载调整后成稿」。</p>
+        <div id="finalBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⑥ 使用统计 <span class="tag">每次扫描/导出自动 +1</span></h2>
+    <div id="statsBody" style="font-size:13px">加载中…</div>
+    <p class="note">统计包含：每位操作人的扫描次数、命中总数、最近使用时间与文件名。数据保存在本浏览器，刷新不丢（不同电脑间不共享）。</p>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 规则库（源自《高途集团-抖音直播违规说明》+ 5.8 案例库） ================= */
+const RULES = [
+ { id:'A', cls:'hl-A', cat:'A类 暗示直播课/货不对板', sev:'高',
+   src:'《高途违规说明》二、A类：画面/口播展示直播课未明确"录播"直接判罚',
+   tpl:'凡涉及"节/课/讲"，前后文必须并列标注「录制」；删掉"直播/互动/答疑/回放/真人实时"等授课形式词',
+   pats:[/直(播|某播|zhi\s*播|波)(?!间|播)|zhi播|lu播|录播|可回放|随时看/g,/\d+\s*节(课)?|\d+\s*讲|小灶|二讲|主讲|私教|1v1|one\s*one|开摄像头|有互动有答疑|训练营|集训营/g] },
+ { id:'B', cls:'hl-B', cat:'B类 学段与学科指向', sev:'中',
+   src:'《高途违规说明》二、B类（K12特有·最高危）：口播/贴片含学科词均可能判违规',
+   tpl:'不点具体科目名——"哪一科"；卖课时学科词必须全部清除',
+   pats:[/数学|语文|英语|物理|化学|生物(?!学)|政治|历史|地理|文言文|古诗词|作文|阅读理解|语法|单词|完形|奥数/g] },
+ { id:'B2', cls:'hl-B', cat:'B类 学段词（低·规划场通用）', sev:'低',
+   src:'《高途违规说明》1.4：不要直接说"小学初中高中""中高考"，可替换为"小阶段/中阶段""规划"',
+   tpl:'规划场可保留；一旦接商品/卖课，学段词必须替换（初三→中阶三、中考→大考）',
+   pats:[/初一|初二|初三|高一|高二|高三|小学|初中|高中|中考|高考/g] },
+ { id:'C', cls:'hl-C', cat:'C类 效果承诺与升学暗示', sev:'高',
+   src:'《高途违规说明》二、C类：禁止对升学、考试通过、培训效果作明示或暗示保证',
+   tpl:'删掉保证性表述，改为"路径/批次"等中性描述',
+   pats:[/保过|包过|保分|必过|稳过|必上|包学会|包拿证|百分之百|100%|肯定(能)?(上|考过)|一定(能)?(上|考过)/g,/(考上|进|上)(了)?(985|211|清北|清华|北大)/g] },
+ { id:'D', cls:'hl-D', cat:'D类 师资与合作背景', sev:'高',
+   src:'《高途违规说明》二、D类 + 三、自审清单「讲师学历证明、人设来源说明（有人设的老师必传）」',
+   tpl:'撤销具体身份年限，改「做初升高规划X年，接触过大量家庭」',
+   pats:[/教龄|\d+年(的)?(教学|带班)|十年班主任|\d+年班主任|当(了)?\d*年?(老师|教师|班主任)|(初中|高中)[^。]{0,14}班主任|毕业(于)?(清华|北大|985|211)|状元|名校(背景|毕业)|在职(老师|教师)|考上教师/g] },
+ { id:'E', cls:'hl-E', cat:'E类 绝对化用语', sev:'低',
+   src:'《高途违规说明》二、E类：唯一、独家、永久、百分百…',
+   tpl:'删掉绝对词，改条件式表述',
+   pats:[/一定|肯定|绝对|永远|这辈子|唯一|第一|最强|最佳|最有效|没有之一|最好/g] },
+ { id:'F', cls:'hl-F', cat:'F类 焦虑营销', sev:'中',
+   src:'《高途违规说明》二、F类 + 5.8 制造教育焦虑（序1"直播间制造焦虑"→带货权限封禁）',
+   tpl:'陈述事实与选项，不用"淘汰/晚了/废了"恐吓框架',
+   pats:[/淘汰|跟不上|再不[^。]{0,8}就(晚|来不及)|来不及了|完蛋|没救|废了|差生|垫底|倒数|慌/g] },
+ { id:'G', cls:'hl-G', cat:'G类 私域导流与私下交易', sev:'高',
+   src:'《高途违规说明》二、G类：口播/字幕/评论区出现任一即违规',
+   tpl:'全部删除；引导改为"评论区/公屏"',
+   pats:[/微信|vx|VX|绿泡泡|加我(微信|好友)|私信|扫码|二维码|公众号|联系方式|电话号|留电话/g] },
+ { id:'H', cls:'hl-H', cat:'H类 虚假促销与稀缺性话术', sev:'中',
+   src:'《高途违规说明》二、H类',
+   tpl:'删除限时限量逼单话术',
+   pats:[/限时|限量|仅剩|最后\d+|马上涨价|恢复原价|错过(今天|这次)|前\d+名|仅今天|今天最低/g] },
+ { id:'I4', cls:'hl-I4', cat:'1.4 严禁承诺效果与极限词', sev:'高',
+   src:'《高途违规说明》1.4：「绝对不说"提分""保分""押题""录取率""全市第一"等词汇」',
+   tpl:'"提分"→「上分规划/不同分数段的规划方案」；"押题"→「高频考点梳理」',
+   pats:[/提分|保分|押题|逆袭|速成|快速见效|轻松拿高分/g] },
+ { id:'I4b', cls:'hl-I4', cat:'1.4 不评价学校与对比成绩', sev:'中',
+   src:'《高途违规说明》1.4：「不评价学校与对比成绩：不得评价学校老师，不得对比班级学生成绩」',
+   tpl:'不评价学校好坏，改「家长先查办学资质，看学校和专业是否适合」',
+   pats:[/垃圾的学校|垃圾学校|烂学校|差学校|骗人的(学校|高中)?|割韭菜|都是坑|尽量(别|不要)(上|选|去)/g] },
+ { id:'PA', cls:'hl-PA', cat:'平台·人身攻击（5.8案例库·不友善内容）', sev:'高',
+   src:'5.8 案例库 序2/序3 赵镭老师案：违规类型「直播间违规·不友善内容」，处置警告～封禁1天',
+   tpl:'只驳观点不驳人：「这个观点我不认同。不过咱们不讨论个人经历，就说孩子怎么走」',
+   pats:[/你上没上过学|没读过书|没上过高中|初中都没毕业|高中都没有读过|什么都不懂|不懂装懂|认知和格局|秀才遇到兵|(?<!不是跟你)(?<!不跟你)抬杠|蠢|笨|文盲|白痴/g] },
+ { id:'PD', cls:'hl-PD', cat:'平台·贬损特定群体', sev:'中',
+   src:'5.8 案例库（对观众/职业群体贬损表述，同型判「不友善内容」）',
+   tpl:'中性描述群体差异，不作贬损归责',
+   pats:[/送快递|送外卖|报废|出淤泥而不染|把孩子给坑了|扫大街|捡破烂/g] },
+ { id:'PC', cls:'hl-PD', cat:'平台·不正当竞争（拉踩同行）', sev:'高',
+   src:'平台《直播行为规范》：引导攻击/拉黑其他直播间',
+   tpl:'改「先别急着信，自己去查公开数据」',
+   pats:[/拉黑|别看(他家|别人)|不要去(别人|他家)|同行都(是|在)骗/g] },
+];
+
+/* 已知违规句 → 官方口径改后（沉淀自五篇标注稿，精确命中自动替换） */
+const KNOWN = [
+ ['咱们有提分的规划','咱们有不同分数段的规划方案','1.4承诺效果'],
+ ['没有中考成绩的学校都是一个垃圾的学校','没有中考成绩就能上的学校，家长要多留个心眼，先查一下办学资质','1.4不评价学校'],
+ ['写了没有分数要求的学校都是一个垃圾的学校','凡是不看分数就能进的学校，家长都先查资质，别急着交钱','1.4不评价学校'],
+ ['你的班主任为了提高班里的正确率','有些学校会拿升学率做考核，这是学校的管理逻辑','1.4不评价学校'],
+ ['年级主任就靠着这个升学率进步的','学校有学校的考核办法，这个和家长没关系','1.4不评价学校'],
+ ['就是为了整那个招生提成啊，就是为了争那个招生返费','有的学校老师推荐职校会有招生返费，家长自己多留心，多看学校的公开数据','1.4不评价学校'],
+ ['我从本科毕业，在初中待了十年的笔记本，有到高中带过六年的高中班主任','我做初升高规划做了很多年，接触过大量初中家庭，升学路径上的事我比较熟','D类'],
+ ['本科毕业，我考上教师，便在初中待过十年的班主任，有的高中待了六年的高中','我做初升高规划十几年了，各类学校的招生规则我比较熟','D类'],
+ ['你得想办法回辽宁啊，回辽宁参加高考','能不能回辽宁考，要按户籍、学籍、实际就读三条来定，以当地教育考试院的口径为准','政策误导'],
+ ['95%的这份咱们的中考不让复读，你没有第二次机会','中考能不能复读，以你们省当年的政策为准，不确定的打当地教育局电话问一句','信息不实'],
+ ['有的老师，有的班主任会劝你，咱们还能放弃中考','有些学校会建议一部分孩子提前走职校，家长听到这类建议，先自己把政策弄清楚','1.4不评价学校'],
+ ['你孩子这辈子都没有机会了','没上高中，这些路径基本就走不了了','E类'],
+ ['孩子可能这辈子都没有上咱们985，上咱们211的机会都没有','路选窄了，后面能报的批次和学校就会少很多','C类'],
+ ['家长千万不要这么做，叫做一定是大错特错','家长这么做风险很大，我建议你别这么选','E类'],
+ ['你的孩子在中专职高技校里边能做到出淤泥而不染吗？他做不到','中专职高之间，校风和管理差别很大，选之前建议实地去看看','平台·贬损群体'],
+ ['家长一定要把他拉黑','听到这种说法，先别急着信，自己去查一下公开的升学数据','平台·不正当竞争'],
+ ['你的孩子就报废了','没上高中，提前批这些路径基本就报不了','平台·贬损群体'],
+ ['你上没上过学？你都没读过书，你是初中毕业或者高中毕业还是本科毕业','家长，这个问题跟学历没关系，咱们就看孩子现在的分数和能走的路径','平台·人身攻击'],
+ ['这位家长，你大概率高中都没有读过','这位家长，咱们先不争这个，回到孩子本身的情况上','平台·人身攻击'],
+ ['你根本就没有读过书，你也没有生物学','这个观点我不认同。不过咱们不讨论个人经历，就说孩子怎么走','平台·人身攻击'],
+ ['你的认知和格局决定了你孩子未来的走向','孩子的走向，很大程度取决于家长愿不愿意多了解信息','平台·人身攻击'],
+ ['有些家长你就活活的把孩子给坑了','有些选择一旦做早了，后面就很难补回来','平台·贬损群体'],
+ ['孩子往哪里走就往快递站走嘛','孩子往哪走，不能这么早就定死','平台·贬损群体'],
+ ['谁跟你说学历没有用的那个人，他一定没有读过书','学历有没有用，看招聘要求就知道了，不用听别人怎么说','E类'],
+ ['读书可能是这辈子咱孩子改变命运最后的机会，没有之一','读书是普通家庭孩子改变路径最直接的一条','E类'],
+ ['高考也是这辈子咱们孩子可能遇到的最公平的机会','高考是普通家庭孩子比较公平的一条路','E类'],
+ ['私立高中都是坑，私立高中都是骗人的，私立高中都是割韭菜的','有家长可能会说私立高中一律不能上。这话我不认同，得看孩子具体情况','1.4不评价学校'],
+ ['能能补上咱们的中专职高技校，尽量的不要少','中专职高技校也不是不能选，关键看学校和专业','1.4不评价学校'],
+ ['被淘汰的，没有养成一个好的学习习惯','容易掉队的，多是没养成好的学习习惯','F类'],
+ ['你是数学听不懂还是物理听不懂','是哪一科听不懂，还是方法没找对','B类'],
+];
+
+/* ================= 文件解析 ================= */
+function readFile(f){
+  return new Promise(res=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      let text=new TextDecoder('utf-8',{fatal:false}).decode(new Uint8Array(r.result));
+      const bad=(text.match(/\uFFFD/g)||[]).length;
+      if(bad>text.length*0.005){ text=new TextDecoder('gbk').decode(new Uint8Array(r.result)); }
+      res(text);
+    };
+    r.readAsArrayBuffer(f);
+  });
+}
+const TS=/font-weight:\s*bold">\s*(\d{1,2}):(\d{2}):(\d{2})\s*<\/div>\s*<div>(?:&nbsp;|\s)*<span[^>]*>([\s\S]*?)<\/span>/i;
+function parseDoc(text){
+  const re=/font-weight:\s*bold">\s*(\d{1,2}):(\d{2}):(\d{2})\s*<\/div>\s*<div>(?:&nbsp;|\s)*<span[^>]*>([\s\S]*?)<\/span>/gi;
+  const segs=[],tss=[];let m;
+  while((m=re.exec(text))){
+    const t=(+m[1])*3600+(+m[2])*60+(+m[3]);
+    const txt=m[4].replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+    if(txt){segs.push(txt);tss.push(t);}
+  }
+  if(segs.length<3){ // 纯文本回退
+    return text.split(/[\n。！？]/).map(s=>s.trim()).filter(s=>s.length>4).map((s,i)=>({t:null,text:s}));
+  }
+  return segs.map((s,i)=>({t:tss[i],text:s}));
+}
+function chunk(paras){
+  const out=[];let cur='',ct=null;
+  for(const p of paras){
+    if(ct===null)ct=p.t;
+    cur+=p.text;
+    if(cur.length>=170){out.push({t:ct,text:cur});cur='';ct=null;}
+  }
+  if(cur)out.push({t:ct,text:cur});
+  return out;
+}
+function fmtT(t){if(t===null||t===undefined)return'';const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':');}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* ================= 扫描 ================= */
+let STATE=null;
+function scanChunks(chunks){
+  const hits=[];
+  chunks.forEach((c,ci)=>{
+    for(const rule of RULES){
+      for(const re of rule.pats){
+        re.lastIndex=0;let m;
+        while((m=re.exec(c.text))){
+          hits.push({ci,start:m.index,end:m.index+m[0].length,text:m[0],rule});
+        }
+      }
+    }
+  });
+  // 去重叠：同段内按 start 排序，保留先出现的
+  hits.sort((a,b)=>a.ci-b.ci||a.start-b.start);
+  const cleaned=[];
+  for(const h of hits){
+    const clash=cleaned.find(x=>x.ci===h.ci&&h.start<x.end&&x.end>x.start);
+    if(!clash)cleaned.push(h);
+  }
+  return cleaned;
+}
+const sevRank={'高':0,'中':1,'低':2};
+
+/* ================= 渲染 ================= */
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
+function logUse(action){
+  const op=document.getElementById('operator').value.trim();
+  try{
+    const arr=JSON.parse(localStorage.getItem('hegui_usage')||'[]');
+    arr.push({ts:new Date().toISOString().replace('T',' ').slice(0,19),operator:op||'（未署名）',
+      filename:STATE.filename,paraCount:STATE.chunks.length,
+      charCount:STATE.chunks.reduce((a,c)=>a+c.text.length,0),hitCount:STATE.hits.length,
+      highCount:STATE.hits.filter(h=>h.rule.sev==='高').length,
+      categories:[...new Set(STATE.hits.map(h=>h.rule.cat))],action});
+    localStorage.setItem('hegui_usage',JSON.stringify(arr.slice(-5000)));
+  }catch(e){}
+  loadStats();
+}
+
+document.getElementById('scanBtn').onclick=async()=>{
+  const f=document.getElementById('file').files[0];
+  const paste=document.getElementById('paste').value.trim();
+  if(!f&&!paste){toast('请先上传文件或粘贴文本');return;}
+  let text,filename;
+  if(f){text=await readFile(f);filename=f.name;}
+  else{text=paste;filename='粘贴文本';}
+  const paras=parseDoc(text);
+  const chunks=chunk(paras);
+  const hits=scanChunks(chunks);
+  const withTs=paras.filter(p=>p.t!==null);
+  STATE={filename,paras,chunks,hits,hasTs:withTs.length>=3};
+  render();
+  logUse('scan');
+  toast('扫描完成：命中 '+hits.length+' 处');
+};
+
+function render(){
+  const {chunks,hits}=STATE;
+  document.getElementById('result').classList.remove('hide');
+  document.getElementById('dlAnno').disabled=false;
+  document.getElementById('dlFinal').disabled=false;
+  // 统计卡
+  const high=hits.filter(h=>h.rule.sev==='高').length,mid=hits.filter(h=>h.rule.sev==='中').length,low=hits.filter(h=>h.rule.sev==='低').length;
+  const cats=[...new Set(hits.map(h=>h.rule.cat.split('（')[0].split('（')[0]))];
+  document.getElementById('statCards').innerHTML=[
+    ['段落数',chunks.length,''],['字数',chunks.reduce((a,c)=>a+c.text.length,0),''],
+    ['命中总数',hits.length,hits.length?'warn':''],['高危',high,high?'warn':''],['中危',mid,''],['低危',low,''],
+  ].map(([l,v,w])=>`<div class="stat ${w}"><b>${v}</b><span>${l}</span></div>`).join('');
+  document.getElementById('density').textContent='命中的风险类型：'+(cats.length?cats.join('、'):'无');
+  document.getElementById('hitTag').textContent='共 '+hits.length+' 处（高'+high+'/中'+mid+'/低'+low+'）';
+  // 清单表
+  let rows='';
+  hits.forEach((h,i)=>{
+    const c=chunks[h.ci];
+    rows+=`<tr><td class="time">${i+1}<br>${fmtT(c.t)}</td><td>${esc(h.text)}</td><td>${esc(h.rule.cat)}</td>
+      <td><span class="sev-${h.rule.sev}">${h.rule.sev}</span></td><td class="src">${esc(h.rule.src)}</td><td>${esc(h.rule.tpl)}</td></tr>`;
+  });
+  document.getElementById('hitTableWrap').innerHTML=hits.length?
+    `<table><tr><th style="width:70px">时间</th><th style="width:150px">命中词句</th><th style="width:170px">官方归类</th><th style="width:44px">严重度</th><th>官方出处</th><th>改写方向</th></tr>${rows}</table>`
+    :'<p style="color:var(--green)">✅ 未命中任何规则词——本场从词面上没有可判罚点（注意：话术密度、画面/贴片需另行人工核查）。</p>';
+  // 标注视图
+  let ah='';
+  chunks.forEach((c,ci)=>{
+    const hs=hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
+    let html='',pos=0;
+    for(const h of hs){
+      html+=esc(c.text.slice(pos,h.start));
+      html+=`<mark class="${h.rule.cls}">${esc(c.text.slice(h.start,h.end))}</mark><span class="src">[${h.rule.sev}·${esc(h.rule.cat)}]</span>`;
+      pos=h.end;
+    }
+    html+=esc(c.text.slice(pos));
+    ah+=`<div class="para"><span class="t">${fmtT(c.t)}</span>${html}</div>`;
+  });
+  document.getElementById('annoView').innerHTML=ah||'<p class="note">（空）</p>';
+  // 成稿视图
+  renderFinal();
+  renderTabs();
+}
+function renderFinal(){
+  const {chunks,hits}=STATE;
+  let fh='';
+  chunks.forEach((c,ci)=>{
+    const text=c.text;
+    // 1) 收集精确替换（KNOWN 优先，命中区间不再重复建议）
+    const known=[];
+    KNOWN.forEach(([from,to,cat])=>{
+      if(cat==='—')return;
+      let idx=0;
+      while((idx=text.indexOf(from,idx))>=0){
+        known.push({start:idx,end:idx+from.length,to,cat});
+        idx+=from.length;
+      }
+    });
+    const overlapsKnown=h=>known.some(k=>h.start<k.end&&h.end>k.start);
+    // 2) 剩余命中（互不重叠）→ 建议点
+    const rest=[];
+    for(const h of hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start)){
+      if(overlapsKnown(h))continue;
+      if(rest.some(x=>h.start<x.end&&h.end>x.start))continue;
+      rest.push(h);
+    }
+    // 3) 合并输出
+    const parts=[];
+    const all=[...known.map(k=>({...k,kind:'known'})),...rest.map(h=>({start:h.start,end:h.end,h,kind:'hit'}))].sort((a,b)=>a.start-b.start);
+    let pos=0;
+    for(const e of all){
+      if(e.start<pos)continue;
+      if(e.start>pos)parts.push({t:text.slice(pos,e.start)});
+      if(e.kind==='known')parts.push({fix:e.to,cat:e.cat});
+      else parts.push({hit:text.slice(e.start,e.end),rule:e.h.rule});
+      pos=e.end;
+    }
+    if(pos<text.length)parts.push({t:text.slice(pos)});
+    // 4) 渲染
+    let html='';
+    parts.forEach(s=>{
+      if(s.fix!==undefined)html+=`<span class="applied">${esc(s.fix)}</span><span class="src" style="font-size:10px">〔已替换·${esc(s.cat)}〕</span>`;
+      else if(s.hit!==undefined)html+=`<mark class="${s.rule.cls}">${esc(s.hit)}</mark><button class="fixbtn" data-cat="${esc(s.rule.cat)}" data-tpl="${esc(s.rule.tpl)}">改</button>`;
+      else html+=esc(s.t);
+    });
+    fh+=`<div class="para"><span class="t">${fmtT(c.t)}</span>${html||'（空）'}</div>`;
+  });
+  document.getElementById('finalBody').innerHTML=fh;
+  document.getElementById('finalBody').querySelectorAll('.fixbtn').forEach(b=>{
+    b.onclick=()=>{
+      const v=prompt('【'+b.dataset.cat+'】\n改写模板：'+b.dataset.tpl+'\n\n请输入替换后的句子（留空=保留原文）：');
+      if(v===null)return;
+      const mk=b.previousSibling;
+      if(v.trim()===''){mk.outerHTML='<span class="kept">'+esc(mk.textContent)+'〔保留〕</span>';}
+      else{mk.outerHTML='<span class="applied">'+esc(v)+'</span>';}
+      b.remove();
+    };
+  });
+}
+
+document.getElementById('tabAnno').onclick=()=>setTab('anno');
+document.getElementById('tabFinal').onclick=()=>setTab('final');
+function setTab(which){
+  document.getElementById('tabAnno').classList.toggle('on',which==='anno');
+  document.getElementById('tabFinal').classList.toggle('on',which==='final');
+  document.getElementById('annoView').classList.toggle('hide',which!=='anno');
+  document.getElementById('finalView').classList.toggle('hide',which!=='final');
+}
+function renderTabs(){setTab('anno');}
+
+/* ================= Word 导出 ================= */
+function wordDoc(title,bodyHtml){
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+  body{font-family:微软雅黑;font-size:10.5pt;line-height:1.6}
+  h1{font-size:14pt}h2{font-size:12pt}
+  .t{color:#888;font-weight:bold;font-size:9pt}
+  mark{padding:0 2px}
+  .meta{color:#666;font-size:9pt}
+  table{border-collapse:collapse;font-size:9pt}td,th{border:1px solid #999;padding:4px 6px}
+  </style></head><body>${bodyHtml}</body></html>`;
+}
+function download(name,content){
+  const blob=new Blob(['\ufeff'+content],{type:'application/msword'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
+}
+document.getElementById('dlAnno').onclick=()=>{
+  const {chunks,hits,filename}=STATE;
+  let body=`<h1>${esc(filename)}——违规点标注</h1><p class="meta">生成时间：${new Date().toLocaleString('zh-CN')}｜依据《高途集团-抖音直播违规说明》A–H 八类 + 1.4 + 5.8 案例库</p><h2>一、违规点清单（${hits.length} 处）</h2><table><tr><th>时间</th><th>命中词句</th><th>官方归类</th><th>严重度</th><th>官方出处</th></tr>`;
+  hits.forEach((h,i)=>{const c=chunks[h.ci];body+=`<tr><td>${fmtT(c.t)}</td><td>${esc(h.text)}</td><td>${esc(h.rule.cat)}</td><td>${h.rule.sev}</td><td>${esc(h.rule.src)}</td></tr>`;});
+  body+='</table><h2>二、逐段标注</h2>';
+  chunks.forEach((c,ci)=>{
+    const hs=hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
+    let html='',pos=0;
+    for(const h of hs){
+      html+=esc(c.text.slice(pos,h.start));
+      html+=`<mark style="background:${bgOf(h.rule.cls)}">${esc(c.text.slice(h.start,h.end))}</mark> <span style="color:#c0392b;font-size:8.5pt">[${h.rule.sev}·${esc(h.rule.cat)}]</span>`;
+      pos=h.end;
+    }
+    html+=esc(c.text.slice(pos));
+    body+=`<p><span class="t">${fmtT(c.t)} </span>${html}</p>`;
+  });
+  download(filename.replace(/\.[^.]+$/,'')+'-违规标注.doc',wordDoc(filename,body));
+  logUse('export-anno');
+  toast('标注版已下载');
+};
+function bgOf(cls){return {A:'#ffd6d6',B:'#fff1b8',C:'#ffe0f0',D:'#d9f7be',E:'#e8e8e8',F:'#efdbff',G:'#b5f5ec',H:'#ffd6e7',I4:'#ffccc7',I4b:'#ffccc7',PA:'#ffaba6',PD:'#b5f5ec',PC:'#b5f5ec'}[cls]||'#ffff99';}
+document.getElementById('dlFinal').onclick=()=>{
+  const {chunks,filename}=STATE;
+  const tmp=document.createElement('div');
+  let body=`<h1>${esc(filename)}——合规调整版成稿</h1><p class="meta">生成时间：${new Date().toLocaleString('zh-CN')}｜绿字=已替换，黄字=保留原文（建议人工复核），标记〔已替换〕为官方口径改写</p>`;
+  // 从 DOM 抓当前成稿状态（包含人工编辑）
+  document.getElementById('finalBody').querySelectorAll('.para').forEach(p=>{
+    const t=p.querySelector('.t')?p.querySelector('.t').textContent:'';
+    const c=p.cloneNode(true);
+    c.querySelectorAll('button').forEach(b=>b.remove());
+    c.querySelectorAll('.applied').forEach(s=>{s.innerHTML=`<span style="background:#d9f7be;color:#00693e;font-weight:bold">${s.textContent}</span>`;});
+    c.querySelectorAll('.kept').forEach(s=>{s.innerHTML=`<span style="background:#fff7e6;color:#ad6800">${s.textContent}</span>`;});
+    c.querySelectorAll('mark').forEach(s=>{s.outerHTML=`<span style="background:${bgOf(s.className.replace('hl-',''))||'#ffff99'}">${s.textContent}</span>`;});
+    c.querySelectorAll('.src').forEach(s=>{s.style.color='#0958d9';s.style.fontSize='8.5pt';});
+    body+=`<p><span class="t">${t}</span>${c.innerHTML}</p>`;
+  });
+  download(filename.replace(/\.[^.]+$/,'')+'-调整后成稿.doc',wordDoc(filename,body));
+  logUse('export-final');
+  toast('成稿已下载');
+};
+
+/* ================= 使用统计（纯静态版：localStorage 本机存储） ================= */
+function loadStats(){
+  let records=[];
+  try{records=JSON.parse(localStorage.getItem('hegui_usage')||'[]');}catch(e){}
+  const byOperator={};const byDay={};
+  for(const r of records){
+    const op=r.operator||'（未署名）';
+    if(!byOperator[op])byOperator[op]={count:0,hits:0,last:'',files:[]};
+    byOperator[op].count++;
+    byOperator[op].hits+=r.hitCount||0;
+    if(!byOperator[op].last||r.ts>byOperator[op].last)byOperator[op].last=r.ts;
+    byOperator[op].files.push(r.filename);
+    const day=(r.ts||'').slice(0,10);
+    byDay[day]=(byDay[day]||0)+1;
+  }
+  const recent=records.slice(-100).reverse();
+  let html=`<div class="stats">
+    <div class="stat"><b>${records.length}</b><span>总使用次数（本机）</span></div>
+    <div class="stat"><b>${Object.keys(byOperator).length}</b><span>操作人数（本机）</span></div></div>`;
+  const ops=Object.entries(byOperator).sort((a,b)=>b[1].count-a[1].count);
+  if(ops.length){
+    html+='<table><tr><th>操作人</th><th>使用次数</th><th>命中总数</th><th>最近使用</th><th>最近文件</th></tr>';
+    ops.forEach(([n,v])=>{html+=`<tr><td>${esc(n)}</td><td><b>${v.count}</b></td><td>${v.hits}</td><td class="time">${esc(v.last)}</td><td>${esc((v.files[v.files.length-1]||'').slice(0,40))}</td></tr>`;});
+    html+='</table>';
+  }
+  html+='<p class="note">最近记录：'+(recent.length?recent.slice(0,5).map(r=>`${r.ts.slice(5,16)} ${esc(r.operator)}（${esc(r.filename).slice(0,20)}，命中${r.hitCount}）`).join('；'):'暂无')+'</p>';
+  html+='<p class="note">纯静态版：使用记录保存在本浏览器（localStorage），刷新不丢；不同电脑/浏览器之间不共享。需要多人汇总统计请用局域网服务端版。</p>';
+  document.getElementById('statsBody').innerHTML=html;
+}
+loadStats();
+</script>
+</body>
+</html>
