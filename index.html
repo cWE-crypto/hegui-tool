@@ -105,6 +105,7 @@
         <span class="hl-A">A类 暗示直播课</span><span class="hl-B">B类 学段学科</span><span class="hl-D">D类 师资背景</span>
         <span class="hl-E">E类 绝对化</span><span class="hl-F">F类 焦虑</span><span class="hl-G">G类 私域导流</span>
         <span class="hl-H">H类 虚假促销</span><span class="hl-I4">1.4 条款</span><span class="hl-PA">平台·人身攻击</span><span class="hl-PD">平台·贬损群体</span>
+        <div class="legend" style="margin-top:6px">句子底色：<span style="background:#ffd9d9;padding:0 4px;border-radius:3px">含高危（必改）</span><span style="background:#fff1bd;padding:0 4px;border-radius:3px">含中危（建议改）</span><span style="background:#eef1f4;padding:0 4px;border-radius:3px">仅低危（提示）</span></div>
       </div>
     </div>
 
@@ -135,7 +136,7 @@ const RULES = [
  { id:'A', cls:'hl-A', cat:'A类 暗示直播课/货不对板', sev:'高',
    src:'《高途违规说明》二、A类：画面/口播展示直播课未明确"录播"直接判罚',
    tpl:'凡涉及"节/课/讲"，前后文必须并列标注「录制」；删掉"直播/互动/答疑/回放/真人实时"等授课形式词',
-   pats:[/直(播|某播|zhi\s*播|波)(?!间|播)|zhi播|lu播|录播|可回放|随时看/g,/\d+\s*节(课)?|\d+\s*讲|小灶|二讲|主讲|私教|1v1|one\s*one|开摄像头|有互动有答疑|训练营|集训营/g] },
+   pats:[/直(播|某播|zhi\s*播|波)(?!间|播|规则)|zhi播|lu播|录播|可回放|随时看/g,/\d+\s*节(课)?|\d+\s*讲|小灶|二讲|主讲|私教|1v1|one\s*one|开摄像头|有互动有答疑|训练营|集训营/g] },
  { id:'B', cls:'hl-B', cat:'B类 学段与学科指向', sev:'中',
    src:'《高途违规说明》二、B类（K12特有·最高危）：口播/贴片含学科词均可能判违规',
    tpl:'不点具体科目名——"哪一科"；卖课时学科词必须全部清除',
@@ -155,7 +156,7 @@ const RULES = [
  { id:'E', cls:'hl-E', cat:'E类 绝对化用语', sev:'低',
    src:'《高途违规说明》二、E类：唯一、独家、永久、百分百…',
    tpl:'删掉绝对词，改条件式表述',
-   pats:[/一定|肯定|绝对|永远|这辈子|唯一|第一|最强|最佳|最有效|没有之一|最好/g] },
+   pats:[/一定|肯定|绝对|永远|这辈子|唯一|第一(?!次|遍|步|条|点|个|天|年|回|场)|最强|最佳|最有效|没有之一|最好/g] },
  { id:'F', cls:'hl-F', cat:'F类 焦虑营销', sev:'中',
    src:'《高途违规说明》二、F类 + 5.8 制造教育焦虑（序1"直播间制造焦虑"→带货权限封禁）',
    tpl:'陈述事实与选项，不用"淘汰/晚了/废了"恐吓框架',
@@ -179,7 +180,7 @@ const RULES = [
  { id:'PA', cls:'hl-PA', cat:'平台·人身攻击（5.8案例库·不友善内容）', sev:'高',
    src:'5.8 案例库 序2/序3 赵镭老师案：违规类型「直播间违规·不友善内容」，处置警告～封禁1天',
    tpl:'只驳观点不驳人：「这个观点我不认同。不过咱们不讨论个人经历，就说孩子怎么走」',
-   pats:[/你上没上过学|没读过书|没上过高中|初中都没毕业|高中都没有读过|什么都不懂|不懂装懂|认知和格局|秀才遇到兵|(?<!不是跟你)(?<!不跟你)抬杠|蠢|笨|文盲|白痴/g] },
+   pats:[/你上没上过学|没读过书|没上过高中|初中都没毕业|高中都没有读过|什么都不懂|不懂装懂|认知和格局|秀才遇到兵|(?<!不是跟你)(?<!不跟你)抬杠|(?<![不有])蠢|(?<![不有])笨|文盲|白痴/g] },
  { id:'PD', cls:'hl-PD', cat:'平台·贬损特定群体', sev:'中',
    src:'5.8 案例库（对观众/职业群体贬损表述，同型判「不友善内容」）',
    tpl:'中性描述群体差异，不作贬损归责',
@@ -567,18 +568,25 @@ function render(){
   document.getElementById('hitTableWrap').innerHTML=hits.length?
     summary
     :'<p style="color:var(--green)">✅ 未命中任何规则词——本场从词面上没有可判罚点（注意：话术密度、画面/贴片需另行人工核查）。</p>';
-  // 标注视图
+  // 标注视图（句子按违规程度整句底色：红=高危 黄=中危 灰=低危；词级标记叠加其上）
   let ah='';
   chunks.forEach((c,ci)=>{
     const hs=hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
-    let html='',pos=0;
-    for(const h of hs){
-      html+=esc(c.text.slice(pos,h.start));
-      const mk=MK[h.rule.sev];
-      html+=`<mark class="${h.rule.cls}">${mk.b}${mk.g}:${esc(c.text.slice(h.start,h.end))}${mk.e}</mark>`;
-      pos=h.end;
-    }
-    html+=esc(c.text.slice(pos));
+    let html='';
+    sentSegs(c.text).forEach(seg=>{
+      const inH=hs.filter(h=>h.start<seg.end&&h.end>seg.start).sort((a,b)=>a.start-b.start);
+      let inner='',pos=seg.start;
+      for(const h of inH){
+        if(h.end<=pos)continue;
+        inner+=esc(c.text.slice(pos,Math.max(pos,h.start)));
+        const mk=MK[h.rule.sev];
+        inner+=`<mark class="${h.rule.cls}">${mk.b}${mk.g}:${esc(c.text.slice(h.start,h.end))}${mk.e}</mark>`;
+        pos=Math.max(pos,h.end);
+      }
+      inner+=esc(c.text.slice(pos,seg.end));
+      const sev=maxSevIn(hs,seg);
+      html+=sev?`<span style="background:${SENTBG[sev]};border-radius:3px;padding:0 1px">${inner}</span>`:inner;
+    });
     ah+=`<div class="para"><span class="t">${fmtT(c.t)}</span>${html}</div>`;
   });
   document.getElementById('annoView').innerHTML=ah||'<p class="note">（空）</p>';
@@ -713,6 +721,7 @@ document.getElementById('dlAnno').onclick=()=>{
   body+='<p><b>核心结论：</b>'+coreVerdict(hits).text+'</p>';
   body+='<h2>一、标注口径与色块说明</h2>';
   body+='<p>【A:词】＝明确违规，依据充分，必须整改；〔B:词〕＝倾向违规，表述委婉或要素不齐，建议整改；〈C:词〉＝提示项，规则未完全成立但存在判定风险。词底色＝违规大类（见下表），与《韦老师聊学习》《别走弯路 初三》两份标注版口径一致。</p>';
+  body+='<p>句子底色＝该句违规程度（按句内最高危词判定）：<span style="background:#ffd9d9">&nbsp;红＝含高危词（句内必改）&nbsp;</span>　<span style="background:#fff1bd">&nbsp;黄＝含中危词（建议改）&nbsp;</span>　<span style="background:#eef1f4">&nbsp;灰＝仅低危词（提示项）&nbsp;</span>；无底色句子＝该句无命中。</p>';
   body+='<table><tr><th>色块</th><th>违规大类</th><th>级别</th><th>统一改写方向</th></tr>';
   (gKeys.length?gKeys:Object.keys(groups)).forEach(k=>{
     const g=groups[k];
@@ -740,17 +749,24 @@ document.getElementById('dlAnno').onclick=()=>{
     body+='<p class="meta">本场未命中已知违规句，逐条改写方向见上表「建议改写句」列。</p>';
   }
   body+='<p class="meta">颜色图例：'+RULES.map(r=>`<span style="background:${bgOf(r.cls)};background-color:${bgOf(r.cls)}">&nbsp;${esc(r.cat.split('（')[0])}&nbsp;</span>`).join(' ')+'</p>';
-  body+='<h2>四、逐段标注（词级高亮）</h2>';
+  body+='<h2>四、逐段标注（句子按违规程度底色 + 词级标记）</h2>';
   chunks.forEach((c,ci)=>{
     const hs=hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
-    let html='',pos=0;
-    for(const h of hs){
-      html+=esc(c.text.slice(pos,h.start));
-      const mk=MK[h.rule.sev];
-      html+=`<span style="mso-highlight:${HLCOLOR[h.rule.cls]||'yellow'};background:${bgOf(h.rule.cls)};font-weight:bold">${mk.b}${mk.g}:${esc(c.text.slice(h.start,h.end))}${mk.e}</span>`;
-      pos=h.end;
-    }
-    html+=esc(c.text.slice(pos));
+    let html='';
+    sentSegs(c.text).forEach(seg=>{
+      const inH=hs.filter(h=>h.start<seg.end&&h.end>seg.start).sort((a,b)=>a.start-b.start);
+      let inner='',pos=seg.start;
+      for(const h of inH){
+        if(h.end<=pos)continue;
+        inner+=esc(c.text.slice(pos,Math.max(pos,h.start)));
+        const mk=MK[h.rule.sev];
+        inner+=`<span style="mso-highlight:${HLCOLOR[h.rule.cls]||'yellow'};background:${bgOf(h.rule.cls)};font-weight:bold">${mk.b}${mk.g}:${esc(c.text.slice(h.start,h.end))}${mk.e}</span>`;
+        pos=Math.max(pos,h.end);
+      }
+      inner+=esc(c.text.slice(pos,seg.end));
+      const sev=maxSevIn(hs,seg);
+      html+=sev?`<span style="background:${SENTBG[sev]}">${inner}</span>`:inner;
+    });
     body+=`<p><span class="t">${fmtT(c.t)} </span>${html}</p>`;
   });
   // 五、密度诊断
@@ -777,6 +793,19 @@ document.getElementById('dlAnno').onclick=()=>{
 const HLCOLOR={A:'yellow',B:'magenta',B2:'cyan',C:'red',D:'green',E:'lightGray',F:'darkYellow',G:'darkCyan',H:'brightGreen',I4:'darkMagenta',I4b:'darkGreen',PA:'darkRed',PD:'blue',PC:'darkBlue'};
 const MK={'高':{b:'【',e:'】',g:'A'},'中':{b:'〔',e:'〕',g:'B'},'低':{b:'〈',e:'〉',g:'C'}};
 function bgOf(cls){return {A:'#ffd6d6',B:'#fff1b8',C:'#ffe0f0',D:'#d9f7be',E:'#e8e8e8',F:'#efdbff',G:'#b5f5ec',H:'#ffd6e7',I4:'#ffccc7',I4b:'#ffccc7',PA:'#ffaba6',PD:'#b5f5ec',PC:'#b5f5ec'}[cls]||'#ffff99';}
+/* 句子级违规程度底色：句子内最高危词决定整句底色（红=含高危A / 黄=含中危B / 灰=仅低危C） */
+const SENTBG={'高':'#ffd9d9','中':'#fff1bd','低':'#eef1f4'};
+const SEVRANK={'高':0,'中':1,'低':2};
+function sentSegs(text){
+  const segs=[];const re=/[^。！？；\n]*[。！？；\n]?/g;let m;
+  while((m=re.exec(text))){if(m[0])segs.push({start:m.index,end:m.index+m[0].length});if(re.lastIndex>=text.length)break;}
+  return segs.length?segs:[{start:0,end:text.length}];
+}
+function maxSevIn(hs,seg){
+  let best=null;
+  hs.forEach(h=>{if(h.start<seg.end&&h.end>seg.start&&(!best||SEVRANK[h.rule.sev]<SEVRANK[best]))best=h.rule.sev;});
+  return best;
+}
 document.getElementById('dlFinal').onclick=()=>{
   const {chunks,filename}=STATE;
   const tmp=document.createElement('div');
