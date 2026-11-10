@@ -136,7 +136,7 @@
 <div id="aiPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:12px;max-width:860px;width:94%;max-height:88vh;overflow:auto;padding:18px 20px">
     <h3 style="margin-top:0">🧠 语义二审（AI 判定）</h3>
-    <p class="note" style="margin-bottom:8px"><b>词库只是初审</b>——只认识词表里的字面词，换说法就漏（如"上分/暴涨/压轴冲刺"）。本步按<b>语义</b>逐句判定，不依赖词表。三步：① 复制下方提示词 → 发给任意 AI（WorkBuddy / 豆包 / Kimi 均可，或直接发给你的合规助手）；② 把 AI 返回的 JSON 粘到下面输入框；③ 点「合并渲染」。语义命中以<span class="hl-ai">&nbsp;蓝色荧光&nbsp;</span>标注、按同类纳入统计与导出，可与词库结果叠加。</p>
+    <p class="note" style="margin-bottom:8px">词库只认字面词，换说法会漏。复制提示词发给 AI（或直接发你的合规助手），把返回的 JSON 粘到下面，点「合并渲染」——语义命中以<span class="hl-ai">&nbsp;蓝色荧光&nbsp;</span>并入统计与导出。</p>
     <textarea id="aiPrompt" readonly style="width:100%;height:200px;font-size:12px;font-family:Consolas,monospace;border:1px solid #ddd;border-radius:6px;padding:8px"></textarea>
     <div style="margin:8px 0"><button id="aiCopy" style="padding:6px 14px;font-size:13px">📋 复制提示词</button><span style="color:#888;font-size:12px;margin-left:8px">提示词已内置《高途集团-抖音直播违规说明》八类口径 + 语义判定要求</span></div>
     <textarea id="aiResult" placeholder="把 AI 返回的 JSON 粘贴到这里（以 [ 开头，以 ] 结尾）" style="width:100%;height:110px;font-size:12px;font-family:Consolas,monospace;border:1px solid #ddd;border-radius:6px;padding:8px"></textarea>
@@ -563,8 +563,7 @@ document.getElementById('scanBtn').onclick=async()=>{
   STATE={filename,paras,chunks,hits,hasTs:withTs.length>=3,showLow:document.getElementById('showLow').checked};
   render();
   logUse('scan');
-  toast('扫描完成：词库一审 '+hits.length+' 处，已打开语义二审');
-  openAiPanel();
+  toast('扫描完成：命中 '+hits.length+' 处');
 };
 
 function render(){
