@@ -110,6 +110,7 @@
     </div>
 
     <div class="card" style="padding-bottom:0">
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--sub);margin:4px 0 0;cursor:pointer"><input type="checkbox" id="showLow">显示低危提示（学段词/绝对化等默认不标，只进统计）</label>
       <div class="tabs">
         <button id="tabAnno" class="on">④ 标注版全文</button>
         <button id="tabFinal">⑤ 调整后成稿</button>
@@ -530,7 +531,7 @@ document.getElementById('scanBtn').onclick=async()=>{
   const chunks=chunk(paras);
   const hits=scanChunks(chunks);
   const withTs=paras.filter(p=>p.t!==null);
-  STATE={filename,paras,chunks,hits,hasTs:withTs.length>=3};
+  STATE={filename,paras,chunks,hits,hasTs:withTs.length>=3,showLow:document.getElementById('showLow').checked};
   render();
   logUse('scan');
   toast('扫描完成：命中 '+hits.length+' 处');
@@ -550,7 +551,7 @@ function render(){
   ].map(([l,v,w])=>`<div class="stat ${w}"><b>${v}</b><span>${l}</span></div>`).join('');
   document.getElementById('verdictBox').innerHTML=coreVerdict(hits).html;
     document.getElementById('density').textContent='命中的风险类型：'+(cats.length?cats.join('、'):'无');
-  document.getElementById('hitTag').textContent='共 '+hits.length+' 处（高'+high+'/中'+mid+'/低'+low+'）';
+  document.getElementById('hitTag').textContent='共 '+hits.length+' 处（高'+high+'/中'+mid+'/低'+low+'）'+(low&&!STATE.showLow?'｜低危 '+low+' 处默认未标':'');
   // 清单表（高中低排序 + 同类归纳）
   const _sevRank={'高':0,'中':1,'低':2};
   const sorted=hits.slice().sort((a,b)=>_sevRank[a.rule.sev]-_sevRank[b.rule.sev]||a.rule.cat.localeCompare(b.rule.cat,'zh')||a.ci-b.ci||a.start-b.start);
@@ -568,10 +569,11 @@ function render(){
   document.getElementById('hitTableWrap').innerHTML=hits.length?
     summary
     :'<p style="color:var(--green)">✅ 未命中任何规则词——本场从词面上没有可判罚点（注意：话术密度、画面/贴片需另行人工核查）。</p>';
-  // 标注视图（句子按违规程度整句底色：红=高危 黄=中危 灰=低危；词级标记叠加其上）
+  // 标注视图（默认只标高/中危，突出重点；低危仅统计，勾选"显示低危提示"后才标出）
+  const marks=STATE.showLow?hits:hits.filter(h=>h.rule.sev!=='低');
   let ah='';
   chunks.forEach((c,ci)=>{
-    const hs=hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
+    const hs=marks.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
     let html='';
     sentSegs(c.text).forEach(seg=>{
       const inH=hs.filter(h=>h.start<seg.end&&h.end>seg.start).sort((a,b)=>a.start-b.start);
@@ -654,6 +656,7 @@ function renderFinal(){
 
 document.getElementById('tabAnno').onclick=()=>setTab('anno');
 document.getElementById('tabFinal').onclick=()=>setTab('final');
+document.getElementById('showLow').onchange=e=>{if(STATE){STATE.showLow=e.target.checked;render();}};
 function setTab(which){
   document.getElementById('tabAnno').classList.toggle('on',which==='anno');
   document.getElementById('tabFinal').classList.toggle('on',which==='final');
@@ -721,7 +724,7 @@ document.getElementById('dlAnno').onclick=()=>{
   body+='<p><b>核心结论：</b>'+coreVerdict(hits).text+'</p>';
   body+='<h2>一、标注口径与色块说明</h2>';
   body+='<p>【A:词】＝明确违规，依据充分，必须整改；〔B:词〕＝倾向违规，表述委婉或要素不齐，建议整改；〈C:词〉＝提示项，规则未完全成立但存在判定风险。词底色＝违规大类（见下表），与《韦老师聊学习》《别走弯路 初三》两份标注版口径一致。</p>';
-  body+='<p>句子底色＝该句违规程度（按句内最高危词判定）：<span style="background:#ffd9d9">&nbsp;红＝含高危词（句内必改）&nbsp;</span>　<span style="background:#fff1bd">&nbsp;黄＝含中危词（建议改）&nbsp;</span>　<span style="background:#eef1f4">&nbsp;灰＝仅低危词（提示项）&nbsp;</span>；无底色句子＝该句无命中。</p>';
+  body+='<p>句子底色＝该句违规程度（按句内最高危词判定）：<span style="background:#ffd9d9">&nbsp;红＝含高危词（句内必改）&nbsp;</span>　<span style="background:#fff1bd">&nbsp;黄＝含中危词（建议改）&nbsp;</span>　<span style="background:#eef1f4">&nbsp;灰＝仅低危词（提示项）&nbsp;</span>；无底色句子＝该句无命中。低危命中（学段词/绝对化等）默认不标注、仅在第②节统计'+(STATE.showLow?'（本次已勾选"显示低危提示"，低危也已标出）':'')+'。</p>';
   body+='<table><tr><th>色块</th><th>违规大类</th><th>级别</th><th>统一改写方向</th></tr>';
   (gKeys.length?gKeys:Object.keys(groups)).forEach(k=>{
     const g=groups[k];
@@ -750,8 +753,9 @@ document.getElementById('dlAnno').onclick=()=>{
   }
   body+='<p class="meta">颜色图例：'+RULES.map(r=>`<span style="background:${bgOf(r.cls)};background-color:${bgOf(r.cls)}">&nbsp;${esc(r.cat.split('（')[0])}&nbsp;</span>`).join(' ')+'</p>';
   body+='<h2>四、逐段标注（句子按违规程度底色 + 词级标记）</h2>';
+  const exH=STATE.showLow?hits:hits.filter(h=>h.rule.sev!=='低');
   chunks.forEach((c,ci)=>{
-    const hs=hits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
+    const hs=exH.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start);
     let html='';
     sentSegs(c.text).forEach(seg=>{
       const inH=hs.filter(h=>h.start<seg.end&&h.end>seg.start).sort((a,b)=>a.start-b.start);
