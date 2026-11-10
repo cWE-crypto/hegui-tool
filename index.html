@@ -135,8 +135,8 @@
 
 <div id="aiPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:12px;max-width:860px;width:94%;max-height:88vh;overflow:auto;padding:18px 20px">
-    <h3 style="margin-top:0">🧠 语义扫描（AI 判定）</h3>
-    <p class="note" style="margin-bottom:8px">三步：① 复制下方提示词 → 发给任意 AI（WorkBuddy / 豆包 / Kimi 均可）；② 把 AI 返回的 JSON 粘到下面输入框；③ 点「合并渲染」。语义命中会以<span class="hl-ai">&nbsp;蓝色荧光&nbsp;</span>标注、按同类纳入统计与导出，可与词库结果叠加。</p>
+    <h3 style="margin-top:0">🧠 语义二审（AI 判定）</h3>
+    <p class="note" style="margin-bottom:8px"><b>词库只是初审</b>——只认识词表里的字面词，换说法就漏（如"上分/暴涨/压轴冲刺"）。本步按<b>语义</b>逐句判定，不依赖词表。三步：① 复制下方提示词 → 发给任意 AI（WorkBuddy / 豆包 / Kimi 均可，或直接发给你的合规助手）；② 把 AI 返回的 JSON 粘到下面输入框；③ 点「合并渲染」。语义命中以<span class="hl-ai">&nbsp;蓝色荧光&nbsp;</span>标注、按同类纳入统计与导出，可与词库结果叠加。</p>
     <textarea id="aiPrompt" readonly style="width:100%;height:200px;font-size:12px;font-family:Consolas,monospace;border:1px solid #ddd;border-radius:6px;padding:8px"></textarea>
     <div style="margin:8px 0"><button id="aiCopy" style="padding:6px 14px;font-size:13px">📋 复制提示词</button><span style="color:#888;font-size:12px;margin-left:8px">提示词已内置《高途集团-抖音直播违规说明》八类口径 + 语义判定要求</span></div>
     <textarea id="aiResult" placeholder="把 AI 返回的 JSON 粘贴到这里（以 [ 开头，以 ] 结尾）" style="width:100%;height:110px;font-size:12px;font-family:Consolas,monospace;border:1px solid #ddd;border-radius:6px;padding:8px"></textarea>
@@ -563,7 +563,8 @@ document.getElementById('scanBtn').onclick=async()=>{
   STATE={filename,paras,chunks,hits,hasTs:withTs.length>=3,showLow:document.getElementById('showLow').checked};
   render();
   logUse('scan');
-  toast('扫描完成：命中 '+hits.length+' 处');
+  toast('扫描完成：词库一审 '+hits.length+' 处，已打开语义二审');
+  openAiPanel();
 };
 
 function render(){
@@ -704,17 +705,18 @@ function renderTabs(){setTab('anno');}
 const AICAT={A:'A类 暗示直播课',B:'B类 学科指向',C:'C类 效果承诺升学',D:'D类 师资背景',E:'E类 绝对化用语',F:'F类 焦虑营销',G:'G类 私域导流',H:'H类 虚假促销'};
 function buildAiPrompt(){
   const text=STATE.chunks.map(c=>c.text).join('\n');
-  return ['你是抖音教育直播合规审核专家，依据《高途集团-抖音直播违规说明》逐句判定以下直播文稿。八类违规：',
-  'A 暗示直播课/货不对板：售卖阶段提"直播/回放"；N节未标"录制"；二讲/主讲/1v1/训练营/试听等授课形式暗示',
-  'B 学段与学科指向：语文/数学等学科词，小学初中高中学段词，中高考考试词',
-  'C 效果承诺与升学暗示：保过/提分/上重点/考不上/影响升学/决定未来等保证性或后果性表述',
-  'D 师资与合作背景：教龄/班主任年限/毕业院校/状元/名师头衔等身份背书',
-  'E 绝对化用语：第一/唯一/顶级/百分百/国家级/最X 等',
-  'F 焦虑营销：制造恐慌与恐吓框架——生死线/淘汰/吃亏/拖垮/影响未来/再不X就Y/耽误孩子/白学等',
-  'G 私域导流与私下交易：微信/私信/进群/粉丝群/二维码/手机号/绕过平台缴费/站外指引',
-  'H 虚假促销与稀缺性话术：限时/限量/仅剩/最后X/先到先得/倒计时/涨价',
+  return ['你是抖音教育直播合规审核专家。对以下直播文稿【逐句按语义判定】，不要做字面词匹配——不出现违规词但语义构成违规的句子同样要判出来。八类语义口径：',
+  'A 暗示直播课/货不对板：售卖或引导购买语境下，任何暗示"能看直播/上课/听讲/回放"的表述。无论是否说出"直播"二字：N节课、二讲、训练营、1v1、开摄像头、试听、带练等都算',
+  'B 学段与学科指向：任何能让观众识别出具体学科（语文/数学/英语/作文/词汇/语法/阅读理解…）或学段（小学/初中/高中/中考/高考…）的表述',
+  'C 效果承诺与升学暗示：任何对学习成果、录取结果作保证或暗示的表述——保过/上分/考不上/影响升学/决定未来，以及"不学=考不上"式暗示',
+  'D 师资与合作背景：任何用教龄/学历/毕业院校/头衔/状元身份为老师背书的表述',
+  'E 绝对化用语：任何"唯一/第一/最X/百分之百/无条件"式极限表述',
+  'F 焦虑营销：任何制造恐慌或恐吓框架的表述——淘汰/跟不上/差距拉大/再不X就晚了/后果不可逆',
+  'G 私域导流与私下交易：任何引导添加联系方式、私信、进群、绕开平台交易或跳转站外的表述',
+  'H 虚假促销与稀缺性话术：任何制造紧迫感或稀缺感的表述——限时/限量/仅剩/最后X名/倒计时/涨价',
   '',
-  '【判定要求】按语义判断而不是字面匹配：换说法的同类表述也要判出来；忽略文本中的标注符号与时间戳；一句命中多类可输出多条。',
+  '【语义判别要点】同类意图换个说法也算。常见变体举例（仅示意，不限于此）：提分类——上分/涨分/暴涨/抢分/压轴提分/错题变少/正确率上来了；效果承诺类——稳步提升/跟着学稳了/分数不会差；焦虑类——现阶段/到了分水岭/考完再想就迟了。',
+  '【判定要求】理解说话意图而非匹配字面；忽略标注符号与时间戳；一句命中多类可输出多条；拿不准的句子倾向判出（宁可多标由人工复核）。',
   '【输出格式】只输出 JSON 数组，不要任何其他文字：[{"s":"命中原句（必须与原文完全一致，便于定位）","cat":"A|B|C|D|E|F|G|H","sev":"高|中|低","why":"不超过25字的理由"}]。全篇无违规则输出 []',
   '',
   '【直播文稿全文】',
