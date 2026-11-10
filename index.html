@@ -244,16 +244,20 @@ function readFile(f){
   });
 }
 const TS=/font-weight:\s*bold">\s*(\d{1,2}):(\d{2}):(\d{2})\s*<\/div>\s*<div>(?:&nbsp;|\s)*<span[^>]*>([\s\S]*?)<\/span>/i;
+/* 旧标注残留：上传已标注版 docx 时剥掉标记与报告残留段，避免"标注文字被当正文重扫"造成假命中 */
+const OLD_MARK=/【[^】]*】|〔[^〕]*〕|〈[^〉]*〉/g;
+const REPORT_ARTIFACT=/色块|标注口径|违规标注汇总|原文：「|三级判定|mso-highlight|颜色图例/;
 function parseDoc(text){
+  text=text.replace(OLD_MARK,'');
   const re=/font-weight:\s*bold">\s*(\d{1,2}):(\d{2}):(\d{2})\s*<\/div>\s*<div>(?:&nbsp;|\s)*<span[^>]*>([\s\S]*?)<\/span>/gi;
   const segs=[],tss=[];let m;
   while((m=re.exec(text))){
     const t=(+m[1])*3600+(+m[2])*60+(+m[3]);
     const txt=m[4].replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-    if(txt){segs.push(txt);tss.push(t);}
+    if(txt&&!REPORT_ARTIFACT.test(txt)){segs.push(txt);tss.push(t);}
   }
   if(segs.length<3){ // 纯文本回退（保留句末标点，保证句子级切分/标注可用）
-    return (text.match(/[^。！？\n]*[。！？]?/g)||[]).map(s=>s.trim()).filter(s=>s.length>4).map((s,i)=>({t:null,text:s}));
+    return (text.match(/[^。！？\n]*[。！？]?/g)||[]).map(s=>s.trim()).filter(s=>s.length>4&&!REPORT_ARTIFACT.test(s)).map((s,i)=>({t:null,text:s}));
   }
   return segs.map((s,i)=>({t:tss[i],text:s}));
 }
