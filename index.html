@@ -139,7 +139,7 @@ const RULES = [
    src:'《高途违规说明》1.1/1.3/A类：售卖阶段句子内不得出现"直播/回放"类字眼；节/课/讲未标"录制"直接违规',
    tpl:'售卖阶段不提"直播/回放"；凡涉及"节/课/讲"必须并列标注「录制」；禁用二讲/主讲/1v1/私教/训练营等伪装词',
    pats:[
-     {re:/直播|回放|随时看/g,need:/课|讲座|节|训练营|集训营|小灶|资料|题|下单|链接|小黄车|购物车|拍|抢|秒杀|名额|报名|福利|优惠|价格|元|客服|上车|领取|讲/g},
+     {re:/直播|回放|随时看/g,need:/课|讲座|节|训练营|集训营|小灶|资料|讲题|题目|题库|真题|押题|下单|链接|小黄车|购物车|抢购|秒杀|名额|报名|福利|优惠|价格|元|客服|上车|领取/g},
      /直\s*某\s*播|直zhi播|zhi播|lu播|直播ke|纯\s*Z\s*播|录播|可回放|支持回放/g,
      /\d+\s*节(课|讲座)?|\d+\s*讲|小灶|二讲|主讲|私教|1v1|one\s*on\s*one|开摄像头|有互动有答疑|训练营|集训营|试听|试学/g ] },
  { id:'B', cls:'hl-B', cat:'B类 学段与学科指向', sev:'中',
@@ -822,8 +822,17 @@ function bgOf(cls){return {A:'#ffd6d6',B:'#fff1b8',C:'#ffe0f0',D:'#d9f7be',E:'#e
 const SENTBG={'高':'#ffd9d9','中':'#fff1bd','低':'#eef1f4'};
 const SEVRANK={'高':0,'中':1,'低':2};
 function sentSegs(text){
-  const segs=[];const re=/[^。！？；\n]*[。！？；\n]?/g;let m;
-  while((m=re.exec(text))){if(m[0])segs.push({start:m.index,end:m.index+m[0].length});if(re.lastIndex>=text.length)break;}
+  const segs=[];let off=0;
+  // 先按时间戳切（直播导出稿内嵌 10:31:34 之类时间轴），再按标点切句，避免整段并成一句导致语境串味
+  const parts=text.split(/(?=\d{1,2}:\d{2}:\d{2})/);
+  for(const part of parts){
+    const re=/[^。！？；\n]*[。！？；\n]?/g;let m;
+    while((m=re.exec(part))){
+      if(m[0])segs.push({start:off+m.index,end:off+m.index+m[0].length});
+      if(re.lastIndex>=part.length)break;
+    }
+    off+=part.length;
+  }
   return segs.length?segs:[{start:0,end:text.length}];
 }
 function maxSevIn(hs,seg){
