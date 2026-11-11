@@ -107,7 +107,7 @@
         <span class="hl-A">A类 暗示直播课</span><span class="hl-B">B类 学段学科</span><span class="hl-D">D类 师资背景</span>
         <span class="hl-E">E类 绝对化</span><span class="hl-F">F类 焦虑</span><span class="hl-G">G类 私域导流</span>
         <span class="hl-H">H类 虚假促销</span><span class="hl-I4">1.4 条款</span><span class="hl-PA">平台·人身攻击</span><span class="hl-PD">平台·贬损群体</span>
-        <div class="legend" style="margin-top:6px">句末<span class="vtag">【A:类别】</span>=该句违规类目（红字）；无标记句子＝无风险点</div>
+        <div class="legend" style="margin-top:6px">句末<span class="vtag">【类目ID·类名】</span>=该句违规类目（红字，【】高危/〔〕中危/〈〉低危）；无标记句子＝无风险点</div>
       </div>
     </div>
 
@@ -186,7 +186,7 @@ const RULES = [
    src:'《高途违规说明》二、H类',
    tpl:'删除限时限量逼单话术',
    pats:[/限时|限量|仅剩|最后\d+|马上涨价|恢复原价|错过(今天|这次|这波|就)|前\d+名|仅今天|今天最低|倒计时|过期(不候|作废)|先到先得|马上下架|手慢无|过时不候|仅限|秒杀价|涨价|赠品|下单就送/g] },
- { id:'I4', cls:'hl-I4', cat:'1.4 严禁承诺效果与极限词', sev:'高',
+ { id:'I4', cls:'hl-I4', cat:'1.4 提分/押题等效果承诺禁词', sev:'高',
    src:'《高途违规说明》1.4：「绝对不说"提分""保分""押题""录取率""全市第一"等词汇」',
    tpl:'"提分/上分"→「分数段规划/不同分数段的学习方案」；"押题"→「高频考点梳理」',
    pats:[/(?<!马)[上涨提抢冲拔](大)?分(?!册|[数寸]|手)|[上提涨冲升](到|了)?\d+\s*分|保分|押(题|中|某中)|母题|必到|必收|逆袭|速成|快速见效|轻松拿高分|暴涨/g] },
@@ -618,7 +618,7 @@ function render(){
       inner+=esc(c.text.slice(pos,seg.end));
       const sev=maxSevIn(hs,seg);
       const seen={},tags=[];
-      inH.forEach(h=>{if(!seen[h.rule.id]){seen[h.rule.id]=1;const mk=MK[h.rule.sev];tags.push(mk.b+mk.g+':'+esc(h.rule.cat.split('（')[0])+mk.e);}});
+      inH.forEach(h=>{if(!seen[h.rule.id]){seen[h.rule.id]=1;const mk=MK[h.rule.sev];const pre=h.rule.id.startsWith('AI')?'AI':h.rule.id;tags.push(mk.b+pre+'·'+esc(h.rule.cat.split('（')[0]).replace(/^[A-H]类 /,'')+mk.e);}});
       html+=inner+`<span class="vtag">${tags.join('')}</span>`;
     });
     ah+=`<div class="para"><span class="t">${fmtT(c.t)}</span>${html}</div>`;
@@ -871,7 +871,7 @@ document.getElementById('dlAnno').onclick=()=>{
       inner+=esc(c.text.slice(pos,seg.end));
       const sev=maxSevIn(hs,seg);
       const seen={},tags=[];
-      inH.forEach(h=>{if(!seen[h.rule.id]){seen[h.rule.id]=1;const mk=MK[h.rule.sev];tags.push(mk.b+mk.g+':'+esc(h.rule.cat.split('（')[0])+mk.e);}});
+      inH.forEach(h=>{if(!seen[h.rule.id]){seen[h.rule.id]=1;const mk=MK[h.rule.sev];const pre=h.rule.id.startsWith('AI')?'AI':h.rule.id;tags.push(mk.b+pre+'·'+esc(h.rule.cat.split('（')[0]).replace(/^[A-H]类 /,'')+mk.e);}});
       html+=inner+`<b style="color:#c0392b;font-size:9pt">${tags.join('')}</b>`;
     });
     body+=`<p><span class="t">${fmtT(c.t)} </span>${html}</p>`;
