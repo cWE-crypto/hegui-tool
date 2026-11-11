@@ -56,6 +56,7 @@
   .vtag{color:#c0392b;font-size:11.5px;font-weight:bold;margin-left:2px}
   .hl-ai{background:#e0ccff}
   .hl-E{background:#e8e8e8}.hl-F{background:#ffdfb8}.hl-G{background:#b5f5ec}.hl-H{background:#c8e0ff}
+  .hl-T{background:#eef3b0}
   .hl-I4{background:#ffc4a3}.hl-AT{background:#ffbdbd}.hl-PA{background:#ffa8a8}.hl-PD{background:#b5f5ec}
   .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:11.5px}
   .legend span{padding:1px 8px;border-radius:4px}
@@ -93,6 +94,7 @@
       <div id="verdictBox" style="margin-bottom:10px"></div>
       <div class="stats" id="statCards"></div>
       <div id="density" style="font-size:12.5px;color:var(--sub)"></div>
+      <div id="fourBox" style="display:none;margin-top:8px;border-radius:8px;padding:10px 14px;font-size:13px;line-height:1.7"></div>
     </div>
 
     <div class="card">
@@ -157,11 +159,15 @@ const RULES = [
  { id:'B', cls:'hl-B', cat:'B类 学段与学科指向', sev:'中',
    src:'《高途违规说明》二、B类（K12特有·最高危）：口播/贴片含学科词均可能判违规',
    tpl:'不点具体科目名——"哪一科"；卖课时学科词必须全部清除',
-   pats:[/数学|语文|英语|英文|物理|化学|生物(?!学)|政治|历史|地理|文言文|古诗词|作文|阅读理解|阅读|语法|词汇|单词|口语|听力|完形|奥数/g,{re:/[七八九][上下]/g,need:/册|教材|课本|知识点?|内容|期中|期末|学|讲|题|考|简单|难|阶段/},/高阶[一二三]|分年段|年段|月考/g] },
+   pats:[/数学|语文|英语|英文|物理|化学|生物(?!学)|政治|历史|地理|文言文|古诗词|作文|阅读理解|阅读|语法|词汇|单词|口语|听力|完形|奥数|与某文|生\s*某\s*物/g,{re:/[七八九][上下]/g,need:/册|教材|课本|知识点?|内容|期中|期末|学|讲|题|考|简单|难|阶段/},/高阶[一二三]|分年段|年段|月考/g] },
  { id:'B2', cls:'hl-B', cat:'B类 学段词（低·规划场通用）', sev:'低',
    src:'《高途违规说明》1.4：不要直接说"小学初中高中""中高考"，可替换为"小阶段/中阶段""规划"',
    tpl:'规划场可保留；一旦接商品/卖课，学段词必须替换（初三→中阶三、中考→大考）',
-   pats:[/初一|初二|初三|高一|高二|高三|小学|初中|高中|中考|高考/g] },
+   pats:[/初一|初二|初三|高一|高二|高三|小学|初中|高中|中考|高考|初阶[一二三]|出金[一二三]|中(大|某)考|高(大|某)考/g] },
+ { id:'T', cls:'hl-T', cat:'教学行为词（只洗名词没洗动词）', sev:'中',
+   src:'《违规共同点核查》共同点2：洗词表只移除了「课堂/上课」字面词，却保留背/默写/刷题/答题模板等教学行为词——平台判的是「在干什么」不是「叫什么」',
+   tpl:'行为词是判罚核心，改写要洗动词：「背→帮你整理」「刷题→做配套练习」「答题模板→思路框架」「考点→重要内容」；或整段改走「升学规划」叙事',
+   pats:[/默写|刷题|试卷分析|二级结论|答题模板|采分点|必背|考点|得分率|高频词|真题|必考点|背(单词|课文|句|词汇|多|起来)/g] },
  { id:'C', cls:'hl-C', cat:'C类 效果承诺与升学暗示', sev:'高',
    src:'《高途违规说明》二、C类：禁止对升学、考试通过、培训效果作明示或暗示保证',
    tpl:'删掉保证性表述，改为"路径/批次"等中性描述',
@@ -582,6 +588,18 @@ function render(){
   ].map(([l,v,w])=>`<div class="stat ${w}"><b>${v}</b><span>${l}</span></div>`).join('');
   document.getElementById('verdictBox').innerHTML=coreVerdict(hits).html;
     document.getElementById('density').textContent='命中的风险类型：'+(cats.length?cats.join('、'):'无');
+  // 四要素核查（学科×学段×真人/直播）——《违规共同点核查》判定口径
+  const fb=document.getElementById('fourBox');
+  const nSubj=hits.filter(h=>h.rule.id==='B').length,nGrad=hits.filter(h=>h.rule.id==='B2').length,
+        nLive=hits.filter(h=>h.rule.id==='A').length,nBeh=hits.filter(h=>h.rule.id==='T').length;
+  const combo=nSubj>0&&nGrad>0&&nLive>0;
+  if(combo){
+    fb.style.display='block';fb.style.background='#fdecea';fb.style.border='1px solid #f5c6c2';fb.style.color='#d93025';
+    fb.innerHTML='<b>⚠️ 四要素组合触发（学科 '+nSubj+' × 学段 '+nGrad+' × 真人/直播 '+nLive+''+(nBeh?' × 教学行为 '+nBeh:'')+'）</b>——按《违规共同点核查》口径，四要素同时命中即构成「学科类真人直播」判罚组合；<b>换词无效（谐音/拆分/换号均被判），唯一有效的是换内容形态</b>：明确标注学科录播 / 录播引导至 APP 观看 / 走平台内电商闭环。';
+  }else{
+    fb.style.display='block';fb.style.background='#eaf2fd';fb.style.border='1px solid #c5dbf5';fb.style.color='#1a5fb4';
+    fb.innerHTML='四要素：学科 '+nSubj+'｜学段 '+nGrad+'｜真人/直播 '+nLive+'｜教学行为 '+nBeh+'——组合未齐，暂不构成判罚组合（仍建议语义二审兜底）';
+  }
   document.getElementById('hitTag').textContent='共 '+hits.length+' 处（高'+high+'/中'+mid+'/低'+low+'）'+(low&&!STATE.showLow?'｜低危 '+low+' 处默认未标':'');
   // 清单表（高中低排序 + 同类归纳）
   const _sevRank={'高':0,'中':1,'低':2};
@@ -899,9 +917,9 @@ document.getElementById('dlAnno').onclick=()=>{
   toast('已下载：'+filename.replace(/\.[^.]+$/,'')+'-违规标注-含优化句.doc（见浏览器下载列表）');
 };
 /* Word 原生荧光笔近似色（mso-highlight 仅支持命名色，取最接近网页色的映射）+ 括号形状区分严重度 */
-const HLCOLOR={'hl-A':'red','hl-B':'yellow','hl-B2':'darkYellow','hl-C':'magenta','hl-D':'green','hl-E':'lightGray','hl-F':'brown','hl-G':'cyan','hl-H':'blue','hl-I4':'darkRed','hl-I4b':'darkGreen','hl-AT':'red','hl-PA':'darkRed','hl-PD':'cyan','hl-PC':'darkBlue','hl-ai':'darkMagenta'};
+const HLCOLOR={'hl-A':'red','hl-B':'yellow','hl-B2':'darkYellow','hl-T':'brown','hl-C':'magenta','hl-D':'green','hl-E':'lightGray','hl-F':'darkYellow','hl-G':'cyan','hl-H':'blue','hl-I4':'darkRed','hl-I4b':'darkGreen','hl-AT':'red','hl-PA':'darkRed','hl-PD':'cyan','hl-PC':'darkBlue','hl-ai':'darkMagenta'};
 const MK={'高':{b:'【',e:'】',g:'A'},'中':{b:'〔',e:'〕',g:'B'},'低':{b:'〈',e:'〉',g:'C'}};
-function bgOf(cls){const k=(cls||'').replace(/^hl-/,'');return {A:'#ffbdbd',B:'#ffe58f',B2:'#fff0c2',C:'#f8c8f8',D:'#d9f7be',E:'#e8e8e8',F:'#ffdfb8',G:'#b5f5ec',H:'#c8e0ff',I4:'#ffc4a3',I4b:'#ffbdbd',AT:'#ffbdbd',PA:'#ffa8a8',PD:'#b5f5ec',PC:'#b5f5ec',ai:'#e0ccff'}[k]||'#ffff99';}
+function bgOf(cls){const k=(cls||'').replace(/^hl-/,'');return {A:'#ffbdbd',B:'#ffe58f',B2:'#fff0c2',T:'#eef3b0',C:'#f8c8f8',D:'#d9f7be',E:'#e8e8e8',F:'#ffdfb8',G:'#b5f5ec',H:'#c8e0ff',I4:'#ffc4a3',I4b:'#ffbdbd',AT:'#ffbdbd',PA:'#ffa8a8',PD:'#b5f5ec',PC:'#b5f5ec',ai:'#e0ccff'}[k]||'#ffff99';}
 /* 句子级违规程度底色：句子内最高危词决定整句底色（红=含高危A / 黄=含中危B / 灰=仅低危C） */
 const SENTBG={'高':'#ffd9d9','中':'#fff1bd','低':'#eef1f4'};
 const SEVRANK={'高':0,'中':1,'低':2};
