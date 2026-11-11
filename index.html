@@ -670,9 +670,9 @@ async function autoAI(){
     for(let i=0;i<batches.length;i++){
       if(st)st.textContent='🤖 AI 语义判定中（第 '+(i+1)+'/'+batches.length+' 批）…';
       let c=null,lastErr=null;
-      for(let t=0;t<2;t++){
+      for(let t=0;t<3;t++){
         try{c=await aiCall(batches[i]);break;}
-        catch(e){lastErr=e;if(t===0)await new Promise(r=>setTimeout(r,2500));}
+        catch(e){lastErr=e;if(t<2)await new Promise(r=>setTimeout(r,t===0?2500:8000));}
       }
       if(c===null)throw (lastErr||new Error('AI 无响应'));
       const ii=c.indexOf('['),jj=c.lastIndexOf(']');
@@ -686,7 +686,8 @@ async function autoAI(){
     document.getElementById('aiApply').click();
   }catch(e){
     if(st)st.textContent='';
-    toast('AI 直连失败（'+e.message+'），已打开手动面板');openAiPanel();
+    if(/HTTP 402/.test(e.message)){toast('AI 免费通道限流（402）——等 1-2 分钟重试，或直接在面板复制提示词给任意 AI');openAiPanel();}
+    else{toast('AI 直连失败（'+e.message+'），已打开手动面板');openAiPanel();}
   }
 }
 
@@ -935,6 +936,10 @@ document.getElementById('aiCopy').onclick=()=>{
   try{document.execCommand('copy');toast('提示词已复制');}catch(e){}
   if(navigator.clipboard)navigator.clipboard.writeText(ta.value).then(()=>toast('提示词已复制'),()=>{});
 };
+/* 归一化：去空白/标点/大小写差异，用于 AI 返回句与原文的模糊定位 */
+function normKey(s){
+  return String(s).replace(/[\s\u3000，。！？；：、,.!?;:'"“”‘’「」『』（）()\[\]【】\-—_·…~]/g,'').toLowerCase();
+}
 document.getElementById('aiApply').onclick=()=>{
   const err=document.getElementById('aiErr');
   const t=document.getElementById('aiResult').value;
@@ -943,25 +948,49 @@ document.getElementById('aiApply').onclick=()=>{
   if(i<0||j<=i){err.textContent='没有找到 JSON 数组（应以 [ 开头、] 结尾）';return;}
   let arr;try{arr=JSON.parse(t.slice(i,j+1));}catch(e){err.textContent='JSON 解析失败：'+e.message;return;}
   const full=STATE.chunks.map(c=>c.text);
+  /* 每段预计算：归一化串 + 归一化位置→原文字符位置映射 */
+  const normFull=[],normMap=[];
+  full.forEach(txt=>{
+    const m=[];
+    for(let k=0;k<txt.length;k++){
+      const nk=normKey(txt[k]);
+      if(nk)m.push(k);
+    }
+    normMap.push(m);
+    normFull.push(m.map(k=>normKey(txt[k])).join(''));
+  });
   const exists={};STATE.hits.forEach(h=>{exists[h.ci+'_'+h.start+'_'+h.text]=1;});
-  const added=[];
+  const added=[];let skipped=0;
   arr.forEach(r=>{
     if(!r||!r.s||!AICAT[r.cat])return;
-    for(let ci=0;ci<full.length;ci++){
-      const idx=full[ci].indexOf(r.s);
-      if(idx>=0&&!exists[ci+'_'+idx+'_'+r.s]){
-        exists[ci+'_'+idx+'_'+r.s]=1;
-        added.push({ci,start:idx,end:idx+r.s.length,text:r.s,rule:{id:'AI'+r.cat,cls:'hl-ai',cat:'语义·'+AICAT[r.cat],
-          sev:(r.sev&&['高','中','低'].indexOf(r.sev)>=0)?r.sev:'中',tpl:'语义判定：'+(r.why||'同类违规表述，按对应类目改写')+(r.rec?('；改写：'+r.rec):'')}});
-        break;
+    let hit=null;
+    for(let ci=0;ci<full.length&&!hit;ci++){
+      /* 1) 精确匹配 */
+      let idx=full[ci].indexOf(r.s);
+      if(idx>=0){hit={ci,start:idx,end:idx+r.s.length};break;}
+      /* 2) 归一化模糊匹配（容忍标点/空格/大小写/微调差异） */
+      const ns=normKey(r.s);
+      if(ns.length>=4){
+        const gi=normFull[ci].indexOf(ns);
+        if(gi>=0&&normMap[ci].length>=gi+ns.length){
+          const st2=normMap[ci][gi];
+          const en2=normMap[ci][gi+ns.length-1]+1;
+          hit={ci,start:st2,end:en2};
+          break;
+        }
       }
     }
+    if(!hit){skipped++;return;}
+    if(exists[hit.ci+'_'+hit.start+'_'+r.s])return;
+    exists[hit.ci+'_'+hit.start+'_'+r.s]=1;
+    added.push({ci:hit.ci,start:hit.start,end:hit.end,text:full[hit.ci].slice(hit.start,hit.end),rule:{id:'AI'+r.cat,cls:'hl-ai',cat:'语义·'+AICAT[r.cat],
+      sev:(r.sev&&['高','中','低'].indexOf(r.sev)>=0)?r.sev:'中',tpl:'语义判定：'+(r.why||'同类违规表述，按对应类目改写')+(r.rec?('；改写：'+r.rec):'')}});
   });
   if(!added.length){err.textContent='没有定位到任何命中句（确认 AI 返回的 s 字段与原文一致）';return;}
   STATE.hits=STATE.hits.concat(added);
   document.getElementById('aiPanel').style.display='none';
   render();
-  toast('🧠 语义命中 '+added.length+' 处已合并（蓝色荧光）');
+  toast('🧠 语义命中 '+added.length+' 处已合并（蓝色荧光）'+(skipped?('，另有 '+skipped+' 处无法定位原文已跳过'):''));
 };
 
 /* ================= Word 导出 ================= */
