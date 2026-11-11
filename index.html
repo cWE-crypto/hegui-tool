@@ -52,11 +52,11 @@
   .hide{display:none}
   .toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:#1f2a44;color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;display:none;z-index:99}
   .note{font-size:12px;color:var(--sub);margin-top:6px}
-  .hl-A{background:#ffd6d6}.hl-B{background:#fff1b8}.hl-C{background:#ffe0f0}.hl-D{background:#d9f7be}
+  .hl-A{background:#ffbdbd}.hl-B{background:#ffe58f}.hl-C{background:#f8c8f8}.hl-D{background:#d9f7be}
   .vtag{color:#c0392b;font-size:11.5px;font-weight:bold;margin-left:2px}
-  .hl-ai{background:#d6e4ff}
-  .hl-E{background:#e8e8e8}.hl-F{background:#efdbff}.hl-G{background:#b5f5ec}.hl-H{background:#ffd6e7}
-  .hl-I4{background:#ffccc7}.hl-AT{background:#ffccc7}.hl-PA{background:#ffaba6}.hl-PD{background:#b5f5ec}
+  .hl-ai{background:#e0ccff}
+  .hl-E{background:#e8e8e8}.hl-F{background:#ffdfb8}.hl-G{background:#b5f5ec}.hl-H{background:#c8e0ff}
+  .hl-I4{background:#ffc4a3}.hl-AT{background:#ffbdbd}.hl-PA{background:#ffa8a8}.hl-PD{background:#b5f5ec}
   .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:11.5px}
   .legend span{padding:1px 8px;border-radius:4px}
 </style>
@@ -852,7 +852,7 @@ document.getElementById('dlAnno').onclick=()=>{
   }else{
     body+='<p class="meta">本场未命中已知违规句，逐条改写方向见上表「建议改写句」列。</p>';
   }
-  body+='<p class="meta">颜色图例：'+RULES.map(r=>`<span style="background:${bgOf(r.cls)};background-color:${bgOf(r.cls)}">&nbsp;${esc(r.cat.split('（')[0])}&nbsp;</span>`).join(' ')+'</p>';
+  body+='<p class="meta">颜色图例：'+RULES.map(r=>`<span style="background:${bgOf(r.cls)};background-color:${bgOf(r.cls)}">&nbsp;${esc(r.cat.split('（')[0])}&nbsp;</span>`).join(' ')+' <span style="background:#e0ccff;background-color:#e0ccff">&nbsp;语义·AI 判定&nbsp;</span></p>';
   body+='<h2>四、逐段标注（句子底色＝程度 + 词荧光＝大类 + 句末类目标签）</h2>';
   const exH=hits.filter(h=>h.rule.id!=='B'&&h.rule.id!=='AIB'&&(STATE.showLow||h.rule.sev!=='低'));
   chunks.forEach((c,ci)=>{
@@ -896,10 +896,10 @@ document.getElementById('dlAnno').onclick=()=>{
   logUse('export-anno');
   toast('已下载：'+filename.replace(/\.[^.]+$/,'')+'-违规标注-含优化句.doc（见浏览器下载列表）');
 };
-/* 参考标注口径：Word 原生荧光笔色 + A/B/C 三级标记（高=A【】/中=B〔〕/低=C〈〉） */
-const HLCOLOR={A:'yellow',B:'magenta',B2:'cyan',C:'red',D:'green',E:'lightGray',F:'darkYellow',G:'darkCyan',H:'brightGreen',I4:'darkMagenta',I4b:'darkGreen',PA:'darkRed',PD:'blue',PC:'darkBlue'};
+/* Word 原生荧光笔近似色（mso-highlight 仅支持命名色，取最接近网页色的映射）+ 括号形状区分严重度 */
+const HLCOLOR={'hl-A':'red','hl-B':'yellow','hl-B2':'darkYellow','hl-C':'magenta','hl-D':'green','hl-E':'lightGray','hl-F':'brown','hl-G':'cyan','hl-H':'blue','hl-I4':'darkRed','hl-I4b':'darkGreen','hl-AT':'red','hl-PA':'darkRed','hl-PD':'cyan','hl-PC':'darkBlue','hl-ai':'darkMagenta'};
 const MK={'高':{b:'【',e:'】',g:'A'},'中':{b:'〔',e:'〕',g:'B'},'低':{b:'〈',e:'〉',g:'C'}};
-function bgOf(cls){return {A:'#ffd6d6',B:'#fff1b8',C:'#ffe0f0',D:'#d9f7be',E:'#e8e8e8',F:'#efdbff',G:'#b5f5ec',H:'#ffd6e7',I4:'#ffccc7',I4b:'#ffccc7',PA:'#ffaba6',PD:'#b5f5ec',PC:'#b5f5ec'}[cls]||'#ffff99';}
+function bgOf(cls){const k=(cls||'').replace(/^hl-/,'');return {A:'#ffbdbd',B:'#ffe58f',B2:'#fff0c2',C:'#f8c8f8',D:'#d9f7be',E:'#e8e8e8',F:'#ffdfb8',G:'#b5f5ec',H:'#c8e0ff',I4:'#ffc4a3',I4b:'#ffbdbd',AT:'#ffbdbd',PA:'#ffa8a8',PD:'#b5f5ec',PC:'#b5f5ec',ai:'#e0ccff'}[k]||'#ffff99';}
 /* 句子级违规程度底色：句子内最高危词决定整句底色（红=含高危A / 黄=含中危B / 灰=仅低危C） */
 const SENTBG={'高':'#ffd9d9','中':'#fff1bd','低':'#eef1f4'};
 const SEVRANK={'高':0,'中':1,'低':2};
