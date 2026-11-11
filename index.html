@@ -568,7 +568,8 @@ document.getElementById('scanBtn').onclick=async()=>{
   STATE={filename,paras,chunks,hits,hasTs:withTs.length>=3,showLow:document.getElementById('showLow').checked};
   render();
   logUse('scan');
-  toast('扫描完成：命中 '+hits.length+' 处');
+  toast('扫描完成：命中 '+hits.length+' 处，已打开语义二审面板');
+  openAiPanel();
 };
 
 function render(){
