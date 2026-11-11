@@ -56,9 +56,20 @@
   .vtag{color:#c0392b;font-size:11.5px;font-weight:bold;margin-left:2px}
   .hl-ai{background:#e0ccff}
   .hl-E{background:#e8e8e8}.hl-F{background:#ffdfb8}.hl-G{background:#b5f5ec}.hl-H{background:#c8e0ff}
+  .hl-CX{background:#d6e4ff}
   .hl-I4{background:#ffc4a3}.hl-AT{background:#ffbdbd}.hl-PA{background:#ffa8a8}.hl-PD{background:#b5f5ec}
   .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:11.5px}
   .legend span{padding:1px 8px;border-radius:4px}
+  .hl-EV{background:#f2c1c1}
+  details.help{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:14px;padding:0}
+  details.help summary{cursor:pointer;font-size:14.5px;font-weight:bold;padding:12px 20px;list-style:none;user-select:none}
+  details.help summary::before{content:'▸ ';color:var(--sub)}
+  details.help[open] summary::before{content:'▾ '}
+  details.help .helpBody{padding:2px 20px 16px;font-size:13px;border-top:1px dashed var(--line)}
+  details.help h3{font-size:13.5px;margin:12px 0 4px;color:var(--blue)}
+  details.help ol{padding-left:22px}
+  details.help li{margin:3px 0}
+  details.help table{margin-top:4px}
 </style>
 </head>
 <body>
@@ -67,6 +78,36 @@
     <h1>🎙️ 话术合规官 · 直播文稿违规标注工具</h1>
     <p>依据《高途集团-抖音直播违规说明》（飞书 wiki）+《违规共同点核查》四要素口径 · 不带货可说"直播"，带货阶段不得提 · 洗词变体照判 · 词库标注 → 语义二审 → 生成调整后可照读成稿</p>
   </header>
+
+  <details class="help">
+    <summary>📖 使用说明（第一次用先看，30 秒上手）</summary>
+    <div class="helpBody">
+      <h3>三步上手</h3>
+      <ol>
+        <li><b>填名字 → 传稿件</b>：操作人填你的名字（统计用）；点「上传文稿」选直播导出的 .doc/.docx/txt，或直接把口播文本粘贴到下方输入框。</li>
+        <li><b>点「开始扫描标注」</b>：自动出 4 样结果——场次概览（为什么违规一句话）、密度诊断（40秒扎堆/钩子节奏）、标注版全文、调整后成稿。AI 语义二审自动运行（蓝色荧光），不用手动操作。</li>
+        <li><b>核对 → 下载</b>：成稿里绿字是已自动替换的合规句，需要微调的点句中「改」按钮；最后点「下载标注版」和「下载调整后成稿」两个按钮拿 Word，直接可交。</li>
+      </ol>
+      <h3>结果怎么看</h3>
+      <table>
+        <tr><th style="width:130px">位置</th><th>含义</th></tr>
+        <tr><td>标注版 · 词底色</td><td>颜色=违规大类（见③区图例），同色不同类看句末标签</td></tr>
+        <tr><td>标注版 · 句末红字</td><td>【类目ID·类名】＝该句触碰的违规条目；【】高危必须改 / 〔〕中危建议改 / 〈〉低危提示</td></tr>
+        <tr><td>成稿 · 绿字</td><td>已按官方口径自动替换，可直接照读</td></tr>
+        <tr><td>成稿 · 〔已删除〕划线</td><td>规避行为自述（"内容敏感/小号/被关"）整句删除，播时直接跳过</td></tr>
+        <tr><td>成稿 · 黄底高亮</td><td>没有安全改法的句子保留原文，需要人工点「改」输入</td></tr>
+        <tr><td>密度诊断</td><td>40秒≥3类占比 ≥72% 进高风险区；整改优先级：连续干净段拉到 4 分钟以上</td></tr>
+      </table>
+      <h3>常见问题</h3>
+      <ol>
+        <li><b>AI 语义扫描没反应/失败</b>：多为网络波动。点「语义扫描」打开面板，复制提示词发给任意 AI 助手，把返回的 JSON 粘回来点「合并渲染」即可。</li>
+        <li><b>下载的 .doc 打不开</b>：右键 → 打开方式 → 选 Word；或确认下载的是浏览器下载列表里的最新文件。</li>
+        <li><b>命中数和我数的不一样</b>：低危（学段词/绝对化等）默认只进统计不进正文，勾选「显示低危提示」后全部标出。</li>
+        <li><b>出现红色「疑似学科内容场」横幅</b>：说明整篇是学科干货场，判罚路径是「变相学科培训」本体——<b>逐句改词救不了</b>，按导出文档末尾的转型方案+验收标准整体重做内容框架。</li>
+        <li><b>词库没扫出来但我觉得有问题</b>：AI 语义扫描就是干这个的（换说法也判）；若 AI 也没标，人工补标并在成稿里手改。</li>
+      </ol>
+    </div>
+  </details>
 
   <div class="card">
     <h2>① 基本信息 <span class="tag">每次使用都会记录</span></h2>
@@ -108,6 +149,7 @@
         <span class="hl-A">A类 暗示直播课</span><span class="hl-B">B类 学段学科</span><span class="hl-D">D类 师资背景</span>
         <span class="hl-E">E类 绝对化</span><span class="hl-F">F类 焦虑</span><span class="hl-G">G类 私域导流</span>
         <span class="hl-H">H类 虚假促销</span><span class="hl-I4">1.4 条款</span><span class="hl-PA">平台·人身攻击</span><span class="hl-PD">平台·贬损群体</span>
+        <span class="hl-EV">平台·规避行为</span><span class="hl-G">G类·利益诱导</span>
         <div class="legend" style="margin-top:6px">句末<span class="vtag">【类目ID·类名】</span>=该句违规类目（红字，【】高危/〔〕中危/〈〉低危）；无标记句子＝无风险点</div>
       </div>
     </div>
@@ -129,7 +171,7 @@
   <div class="card">
     <h2>⑥ 使用统计 <span class="tag">每次扫描/导出自动 +1</span></h2>
     <div id="statsBody" style="font-size:13px">加载中…</div>
-    <p class="note">统计包含：每位操作人的扫描次数、命中总数、最近使用时间与文件名。数据保存在本浏览器，刷新不丢（不同电脑间不共享）。</p>
+    <p class="note">统计包含：每位操作人的扫描次数、命中总数、最近使用时间与文件名。数据保存在服务端，刷新不丢。</p>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -145,6 +187,7 @@
   </div>
 </div>
 
+<script src="custom-rules.js"></script>
 <script>
 /* ================= 规则库（源自《高途集团-抖音直播违规说明》+ 5.8 案例库） ================= */
 const RULES = [
@@ -166,7 +209,7 @@ const RULES = [
  { id:'C', cls:'hl-C', cat:'C类 效果承诺与升学暗示', sev:'高',
    src:'《高途违规说明》二、C类：禁止对升学、考试通过、培训效果作明示或暗示保证',
    tpl:'删掉保证性表述，改为"路径/批次"等中性描述',
-   pats:[/保过|包过|保分|必过|稳过|必上|包学会|包拿证|百分之百|100%|肯定(能)?(上|考过)|一定(能)?(上|考过)/g,/(考上|进|上)(了)?(985|211|清北|清华|北大)/g,/上重点|考不上|上不了(高中|重点|普高)?|影响[^。！？；\n]{0,12}(上重点|升学|中考|高考|未来|前途)|决定[^。！？；\n]{0,12}(升学|未来|前途)|升学(线|机会|名额)|重点(高中|中学)|录取率|升学率|之前就(收到|拿到)|真讲真(提升|学|练)|真提升/g] },
+   pats:[/保过|包过|保分|必过|稳过|必上|包学会|包拿证|百分之百|100%|肯定(能)?(上|考过)|一定(能)?(上|考过)/g,/(考上|进|上)(了)?(985|211|清北|清华|北大)/g,/上重点|考不上|上不了(高中|重点|普高)?|影响[^。！？；\n]{0,12}(上重点|升学|中考|高考|未来|前途)|决定[^。！？；\n]{0,12}(升学|未来|前途)|升学(线|机会|名额)|重点(高中|中学)|录取率|升学率|之前就(收到|拿到)|真讲真(提升|学|练)|真提升/g,{re:/\d+\s*到\s*\d+\s*分|\d+\s*分加|考到\s*\d+\s*来?分|\d+%\s*的?分值|毫不夸张|将过\s*\d+/g}] },
  { id:'D', cls:'hl-D', cat:'D类 师资与合作背景', sev:'高',
    src:'《高途违规说明》二、D类 + 三、自审清单「讲师学历证明、人设来源说明（有人设的老师必传）」',
    tpl:'撤销具体身份年限，改「做初升高规划X年，接触过大量家庭」',
@@ -209,6 +252,14 @@ const RULES = [
    src:'平台《直播行为规范》：引导攻击/拉黑其他直播间',
    tpl:'改「先别急着信，自己去查公开数据」',
    pats:[/拉黑|别看(他家|别人)|不要去(别人|他家)|同行都(是|在)骗/g] },
+ { id:'EV', cls:'hl-EV', cat:'平台·规避行为（自述敏感/换号/控制人数）', sev:'高',
+   src:'平台《直播行为规范》·规避审核：主播自述"内容敏感/这是小号/大号被关小黑屋/控制人数怕被关"=主观明知+换号规避证据链，判罚后申诉空间为零',
+   tpl:'整句删除——不解释内容敏感性、不提大小号/限流/控制人数，正常往下讲',
+   pats:[/小号|大号|小黑屋|被限流|限流了|怕给我?关|怕被关|内容(有点)?(敏感|危险|违规)|危险(内容|动作)|控制(一下)?人数|展示会被关|不能有太多人/g] },
+ { id:'IN', cls:'hl-G', cat:'G类 利益诱导互动（扣数字领资料）', sev:'中',
+   src:'《高途违规说明》二、G类：以资料/福利诱导评论、关注、加群，同属导流判定范围',
+   tpl:'改成自然口播「需要的在评论区留言」，不用资料作交换条件',
+   pats:[/(扣|打)\s*[0-9一二三两五六]{1,3}\s*(个?要|领取|发|送)|想要的?(扣|打|说|回复|领)|没点关注的?[^。]{0,14}把关注点(上|一下)|把关注点(上|一下)|领(资料|福利|讲义|这份)|资料包|福利包|免费领/g] },
 ];
 
 /* 已知违规句 → 官方口径改后（沉淀自五篇标注稿，精确命中自动替换） */
@@ -243,7 +294,45 @@ const KNOWN = [
  ['能能补上咱们的中专职高技校，尽量的不要少','中专职高技校也不是不能选，关键看学校和专业','1.4不评价学校'],
  ['被淘汰的，没有养成一个好的学习习惯','容易掉队的，多是没养成好的学习习惯','F类'],
  ['你是数学听不懂还是物理听不懂','是哪一科听不懂，还是方法没找对','B类'],
+ /* —— 沉淀自「初三妈妈进来听」261111 —— */
+ ['有机会将过30到50分','把这两次考试的复习节奏抓好，成绩会有比较明显的变化','C类'],
+ ['提30到50分','成绩会有比较明显的变化','C类'],
+ ['考到100来分','成绩能有比较明显的进步','C类'],
+ ['你考到90分以上','目标定在最近两次考试能达到的分数上，先把基础分拿稳','C类'],
+ ['70%的分值','大部分分值','C类'],
+ ['33天搞定90分加','这30多天把重点内容过一遍，能接上的都接上','C类'],
+ ['我今天就是语文老师','这一科的内容我讲了很多年','B类'],
+ ['数理化数物化','难度大的科目','B类'],
+ ['语数英物化','各科','B类'],
+ ['全国百强中学','办学水平比较靠前的学校','D类'],
+ ['放到粉丝群里边儿','整理好放在评论区','G类'],
+ ['进粉丝群的','在评论区留言','G类'],
+ ['我今天讲的内容有点敏感啊','咱们接着往下说','平台·规避行为'],
+ ['这是我的小号','（删除）','平台·规避行为'],
+ ['被关小黑屋','（删除）','平台·规避行为'],
 ];
+
+/* ================= 自定义词库合并（维护人编辑 custom-rules.js，运营侧无感） =================
+   违规原因的补充权在维护人：往 custom-rules.js 里加词/加句对，保存后运营 F5 即生效 */
+function buildCustomRules(list){
+  return (list||[]).map(function(r){
+    const words=(r.words||[]).map(w=>String(w).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+    return {
+      id:String(r.id||'CX'+Math.floor(Math.random()*999)),
+      cls:'hl-CX',
+      cat:String(r.cat||'自定义补充'),
+      sev:['高','中','低'].indexOf(r.sev)>=0?r.sev:'中',
+      src:String(r.src||'维护人自定义补充词库'),
+      tpl:String(r.tpl||'按对应官方类目口径改写'),
+      pats:[new RegExp(words.join('|')||'(?!x)x','g')]
+    };
+  });
+}
+(function(){
+  const W=(typeof window!=='undefined'&&window)||{};
+  RULES.push(...buildCustomRules(W.CUSTOM_RULES));
+  KNOWN.push(...(W.CUSTOM_KNOWN||[]));
+})();
 
 /* ================= 文件解析 ================= */
 function readFile(f){
@@ -530,28 +619,11 @@ const sevRank={'高':0,'中':1,'低':2};
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
 function logUse(action){
   const op=document.getElementById('operator').value.trim();
-  try{
-    const arr=JSON.parse(localStorage.getItem('hegui_usage')||'[]');
-    arr.push({ts:new Date().toISOString().replace('T',' ').slice(0,19),operator:op||'（未署名）',
-      filename:STATE.filename,paraCount:STATE.chunks.length,
+  fetch('/api/log',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({operator:op,filename:STATE.filename,paraCount:STATE.chunks.length,
       charCount:STATE.chunks.reduce((a,c)=>a+c.text.length,0),hitCount:STATE.hits.length,
       highCount:STATE.hits.filter(h=>h.rule.sev==='高').length,
-      categories:[...new Set(STATE.hits.map(h=>h.rule.cat))],action});
-    localStorage.setItem('hegui_usage',JSON.stringify(arr.slice(-5000)));
-  }catch(e){}
-  
-/* iframe 预览环境检测：沙箱内下载会被拦截 */
-(function(){
-  try{
-    if(window.self!==window.top){
-      var d=document.createElement('div');
-      d.style.cssText='background:#fff7e6;border:1px solid #ffd591;color:#ad6800;border-radius:8px;padding:10px 14px;margin:0 0 14px;font-size:13px';
-      d.innerHTML='\u26a0\ufe0f 当前页面在预览面板（iframe）中打开，文件下载会被浏览器拦截。请把链接复制到 Chrome/Edge 新标签页打开，或直接双击 index.html 使用，下载即正常。';
-      document.querySelector('.wrap').insertBefore(d,document.querySelector('.wrap').firstChild);
-    }
-  }catch(e){}
-})();
-loadStats();
+      categories:[...new Set(STATE.hits.map(h=>h.rule.cat))],action})}).then(loadStats).catch(()=>{});
 }
 
 document.getElementById('scanBtn').onclick=async()=>{
@@ -659,9 +731,14 @@ function render(){
     sumRows+=`<tr><td>${esc(k)}</td><td><span class="sev-${g.rule.sev}">${g.rule.sev}</span></td><td><b>${g.n}</b>（高${g.sev['高']}/中${g.sev['中']}/低${g.sev['低']}）</td><td>${wtxt}</td><td>${esc(g.rule.tpl)}</td></tr>`;
   });
   const summary=hits.length?`<table style="margin-bottom:12px"><tr><th style="width:170px">官方归类（同类归纳）</th><th style="width:44px">严重度</th><th style="width:110px">处数</th><th style="width:260px">命中词（去重）</th><th>统一改写方向</th></tr>${sumRows}</table>`:'';
-  document.getElementById('hitTableWrap').innerHTML=hits.length?
+  // 学科内容场判定：学科词命中 ≥6 处或学科密度 ≥5次/分 → 判罚路径是「变相学科培训」本体，改句子救不了，须整体转型
+  const nB=hits.filter(h=>h.rule.id==='B'||h.rule.id==='AIB').length;
+  const _dd=computeDensity(STATE.paras);
+  STATE.subjField=nB>=6||_dd.subjPerMin>=5;
+  const subjBanner=STATE.subjField?`<div style="border-left:4px solid #c0392b;background:#fdecea;padding:10px 14px;border-radius:0 6px 6px 0;margin-bottom:12px"><b style="color:#c0392b">⚠️ 疑似学科内容场（学科词命中 ${nB} 处，密度 ${_dd.subjPerMin.toFixed(1)} 次/分）</b>——判罚路径是「1.1 变相学科培训」本体（与案例库"大胜满分物理"系列同型，洗词只洗字面不洗内容本体）。<b>改句子救不了，必须整体转型</b>：换成「时间节点 + 家长动作」规划框架；验收标准：①学科句占比&lt;5%　②粉丝群字样归零　③规避自述归零　④一句挂≤1.4　⑤效果承诺不带数字。</div>`:'';
+  document.getElementById('hitTableWrap').innerHTML=subjBanner+(hits.length?
     summary
-    :'<p style="color:var(--green)">✅ 未命中任何规则词——本场从词面上没有可判罚点（注意：话术密度、画面/贴片需另行人工核查）。</p>';
+    :'<p style="color:var(--green)">✅ 未命中任何规则词——本场从词面上没有可判罚点（注意：话术密度、画面/贴片需另行人工核查）。</p>');
   // 标注视图（对齐参考案例：句子底色=违规程度，词只做荧光，句末合并一个「级别:类别」标签，不再逐词打标）
   // 学科词（B类）正文不标注，仅进统计与归纳表
   const marks=hits.filter(h=>h.rule.id!=='B'&&h.rule.id!=='AIB'&&(STATE.showLow||h.rule.sev!=='低'));
@@ -715,6 +792,13 @@ function fixText(id,txt){
   });
   return changed?out:null;
 }
+/* 句级自动策略：人身攻击/贬损/拉踩/规避行为 → 命中所在整句替换为中性缓冲句（EV=直接删除） */
+const SENT_POLICY={
+  PA:'这个观点我不认同，咱们不讨论个人经历，就说孩子怎么走。',
+  PD:'不同路径各有特点，家长按孩子的情况来选就可以。',
+  PC:'先别急着信，自己去查一下公开的升学数据。',
+  EV:null
+};
 function renderFinal(){
   const {chunks,hits}=STATE;
   // 成稿只改「触碰违规类目」的句子：默认高/中危才给出改写点，低危提示项（学段词/绝对化）保持原样，勾选"显示低危提示"后才纳入
@@ -733,22 +817,31 @@ function renderFinal(){
         idx+=from.length;
       }
     });
-    const overlapsKnown=h=>known.some(k=>h.start<k.end&&h.end>k.start);
-    // 2) 剩余命中（互不重叠）→ 建议点
+    // 2) 句级策略范围（PA/PD/PC/EV 命中 → 所在整句替换/删除）
+    const dels=[];
+    const segs=sentSegs(text);
+    fhits.filter(h=>h.ci===ci&&SENT_POLICY.hasOwnProperty(h.rule.id)).forEach(h=>{
+      const seg=segs.find(s=>h.start<s.end&&h.end>s.start);
+      if(seg&&(!dels.length||seg.start>dels[dels.length-1].end))dels.push({start:seg.start,end:seg.end,buf:SENT_POLICY[h.rule.id]});
+    });
+    const inDel=h=>dels.some(d=>h.start<d.end&&h.end>d.start);
+    // 3) 剩余命中（互不重叠）→ 建议点
     const rest=[];
     for(const h of fhits.filter(h=>h.ci===ci).sort((a,b)=>a.start-b.start)){
-      if(overlapsKnown(h))continue;
+      if(inDel(h))continue;
+      if(known.some(k=>h.start<k.end&&h.end>k.start))continue;
       if(rest.some(x=>h.start<x.end&&h.end>x.start))continue;
       rest.push(h);
     }
-    // 3) 合并输出
+    // 4) 合并输出
     const parts=[];
-    const all=[...known.map(k=>({...k,kind:'known'})),...rest.map(h=>({start:h.start,end:h.end,h,kind:'hit'}))].sort((a,b)=>a.start-b.start);
+    const all=[...known.filter(k=>!inDel(k)).map(k=>({...k,kind:'known'})),...dels.map(d=>({...d,kind:'del'})),...rest.map(h=>({start:h.start,end:h.end,h,kind:'hit'}))].sort((a,b)=>a.start-b.start);
     let pos=0;
     for(const e of all){
       if(e.start<pos)continue;
       if(e.start>pos)parts.push({t:text.slice(pos,e.start)});
       if(e.kind==='known')parts.push({fix:e.to,cat:e.cat});
+      else if(e.kind==='del')parts.push({fix:e.buf||'（删除）',cat:e.buf?'平台·不友善内容':'平台·规避行为',del:!e.buf});
       else{
         const auto=e.h.rule.rec||fixText(e.h.rule.id,text.slice(e.start,e.end));
         if(auto)parts.push({fix:auto,cat:e.h.rule.cat});
@@ -757,10 +850,13 @@ function renderFinal(){
       pos=e.end;
     }
     if(pos<text.length)parts.push({t:text.slice(pos)});
-    // 4) 渲染
+    // 5) 渲染
     let html='';
     parts.forEach(s=>{
-      if(s.fix!==undefined)html+=`<span class="applied">${esc(s.fix)}</span><span class="src" style="font-size:10px">〔已替换·${esc(s.cat)}〕</span>`;
+      if(s.fix!==undefined){
+        if(s.del||s.fix==='（删除）')html+=`<span class="applied" style="background:#ececec;color:#999;text-decoration:line-through">〔已删除·${esc(s.cat)}〕</span>`;
+        else html+=`<span class="applied">${esc(s.fix)}</span><span class="src" style="font-size:10px">〔已替换·${esc(s.cat)}〕</span>`;
+      }
       else if(s.hit!==undefined)html+=`<mark class="${s.rule.cls}">${esc(s.hit)}</mark><button class="fixbtn" data-cat="${esc(s.rule.cat)}" data-tpl="${esc(s.rule.tpl)}">改</button>`;
       else html+=esc(s.t);
     });
@@ -994,14 +1090,20 @@ document.getElementById('dlAnno').onclick=()=>{
   body+=`<tr><td>最长连续干净段</td><td>${fmtMin(_d.best)}</td><td>≥4 分</td><td>1.9 分</td><td>${_d.best>=240?'达标':'不达标'}</td></tr>`;
   body+=`<tr><td>钩子总数 / 间隔中位 / 最长无钩子</td><td>${_d.hookSent.length} 个 / ${_d.gapMed===null?'—':(_d.gapMed/60).toFixed(1)+'分'} / ${_d.hookSent.length?(_d.gapMax/60).toFixed(1)+'分':'—'}（开场首钩 ${(_d.headGap/60).toFixed(1)} 分）</td><td>≤3 分（经验）</td><td>—</td><td>${_jg.l}</td></tr>`;
   body+='</table>';
+  if(STATE.subjField){
+    body+='<h2>六、学科内容场整体转型方案</h2>';
+    body+='<p>本篇判定为<b>学科内容场</b>：学科词密度超标、话术密度超线，判罚路径是「1.1 变相学科培训」本体（与案例库"大胜满分物理"系列同型）。洗词（谐音/拆字/换名词）只洗字面不洗内容本体，<b>逐句改词救不了，必须整体转型</b>：</p>';
+    body+='<p>① 内容框架换成「时间节点 + 家长动作」：每个时间节点只讲家长要做什么、查什么、避什么，不讲学科知识本身；② 学科词（数学/语文/文言文/单词…）全部退出口播；③ 「粉丝群/进群/领资料」字样归零；④ 删掉所有「内容敏感/小号/被关小黑屋」自述（规避行为证据链）；⑤ 效果承诺一律不带数字。</p>';
+    body+='<p><b>验收标准：</b>学科句占比&lt;5%｜粉丝群字样 0｜规避自述 0｜一句挂≤1.4｜效果承诺无数字。</p>';
+  }
   download(filename.replace(/\.[^.]+$/,'')+'-违规标注-含优化句.doc',wordDoc(filename,body));
   logUse('export-anno');
   toast('已下载：'+filename.replace(/\.[^.]+$/,'')+'-违规标注-含优化句.doc（见浏览器下载列表）');
 };
-/* Word 原生荧光笔近似色（mso-highlight 仅支持命名色，取最接近网页色的映射）+ 括号形状区分严重度 */
-const HLCOLOR={'hl-A':'red','hl-B':'yellow','hl-B2':'darkYellow','hl-C':'magenta','hl-D':'green','hl-E':'lightGray','hl-F':'darkYellow','hl-G':'cyan','hl-H':'blue','hl-I4':'darkRed','hl-I4b':'darkGreen','hl-AT':'red','hl-PA':'darkRed','hl-PD':'cyan','hl-PC':'darkBlue','hl-ai':'darkMagenta'};
+/* 参考标注口径：Word 原生荧光笔色 + A/B/C 三级标记（高=A【】/中=B〔〕/低=C〈〉） */
+const HLCOLOR={'hl-A':'red','hl-B':'yellow','hl-B2':'darkYellow','hl-C':'magenta','hl-D':'green','hl-E':'lightGray','hl-F':'darkYellow','hl-G':'cyan','hl-H':'blue','hl-I4':'darkRed','hl-I4b':'darkGreen','hl-AT':'red','hl-PA':'darkRed','hl-PD':'cyan','hl-PC':'darkBlue','hl-EV':'darkRed','hl-CX':'blue','hl-ai':'darkMagenta'};
 const MK={'高':{b:'【',e:'】',g:'A'},'中':{b:'〔',e:'〕',g:'B'},'低':{b:'〈',e:'〉',g:'C'}};
-function bgOf(cls){const k=(cls||'').replace(/^hl-/,'');return {A:'#ffbdbd',B:'#ffe58f',B2:'#fff0c2',C:'#f8c8f8',D:'#d9f7be',E:'#e8e8e8',F:'#ffdfb8',G:'#b5f5ec',H:'#c8e0ff',I4:'#ffc4a3',I4b:'#ffbdbd',AT:'#ffbdbd',PA:'#ffa8a8',PD:'#b5f5ec',PC:'#b5f5ec',ai:'#e0ccff'}[k]||'#ffff99';}
+function bgOf(cls){const k=(cls||'').replace(/^hl-/,'');return {A:'#ffbdbd',B:'#ffe58f',B2:'#fff0c2',C:'#f8c8f8',D:'#d9f7be',E:'#e8e8e8',F:'#ffdfb8',G:'#b5f5ec',H:'#c8e0ff',I4:'#ffc4a3',I4b:'#ffbdbd',AT:'#ffbdbd',PA:'#ffa8a8',PD:'#b5f5ec',PC:'#b5f5ec',EV:'#f2c1c1',CX:'#d6e4ff',ai:'#e0ccff'}[k]||'#ffff99';}
 /* 句子级违规程度底色：句子内最高危词决定整句底色（红=含高危A / 黄=含中危B / 灰=仅低危C） */
 const SENTBG={'高':'#ffd9d9','中':'#fff1bd','低':'#eef1f4'};
 const SEVRANK={'高':0,'中':1,'低':2};
@@ -1040,41 +1142,47 @@ document.getElementById('dlFinal').onclick=()=>{
     body+=`<p><span class="t">${t}</span>${c.innerHTML}</p>`;
   });
   download(filename.replace(/\.[^.]+$/,'')+'-调整后成稿.doc',wordDoc(filename,body));
+  if(STATE.subjField){
+    const note=`<h2>⚠️ 学科内容场整改说明（本篇为学科内容场，逐句替换后仍需整体转型）</h2><p>成稿中的绿色替换句只处理了「可改词」的违规点；学科干货本体（讲文言文/单词/考纲数字）不是换词能解决的。播出前请按验收标准自查：①学科句占比&lt;5%　②粉丝群字样 0　③规避自述 0　④一句挂≤1.4　⑤效果承诺无数字。未达标的内容段落请整体替换为「时间节点+家长动作」规划话术。</p>`;
+    // 注入到 body 结尾前：重新生成一次带说明的导出
+    const full=body+note;
+    download(filename.replace(/\.[^.]+$/,'')+'-调整后成稿.doc',wordDoc(filename,full));
+  }
   logUse('export-final');
   toast('已下载：'+filename.replace(/\.[^.]+$/,'')+'-调整后成稿.doc（见浏览器下载列表）');
 };
 
 
-
-/* ================= 使用统计（纯静态版：localStorage 本机存储） ================= */
-function loadStats(){
-  let records=[];
-  try{records=JSON.parse(localStorage.getItem('hegui_usage')||'[]');}catch(e){}
-  const byOperator={};const byDay={};
-  for(const r of records){
-    const op=r.operator||'（未署名）';
-    if(!byOperator[op])byOperator[op]={count:0,hits:0,last:'',files:[]};
-    byOperator[op].count++;
-    byOperator[op].hits+=r.hitCount||0;
-    if(!byOperator[op].last||r.ts>byOperator[op].last)byOperator[op].last=r.ts;
-    byOperator[op].files.push(r.filename);
-    const day=(r.ts||'').slice(0,10);
-    byDay[day]=(byDay[day]||0)+1;
-  }
-  const recent=records.slice(-100).reverse();
-  let html=`<div class="stats">
-    <div class="stat"><b>${records.length}</b><span>总使用次数（本机）</span></div>
-    <div class="stat"><b>${Object.keys(byOperator).length}</b><span>操作人数（本机）</span></div></div>`;
-  const ops=Object.entries(byOperator).sort((a,b)=>b[1].count-a[1].count);
-  if(ops.length){
-    html+='<table><tr><th>操作人</th><th>使用次数</th><th>命中总数</th><th>最近使用</th><th>最近文件</th></tr>';
-    ops.forEach(([n,v])=>{html+=`<tr><td>${esc(n)}</td><td><b>${v.count}</b></td><td>${v.hits}</td><td class="time">${esc(v.last)}</td><td>${esc((v.files[v.files.length-1]||'').slice(0,40))}</td></tr>`;});
-    html+='</table>';
-  }
-  html+='<p class="note">最近记录：'+(recent.length?recent.slice(0,5).map(r=>`${r.ts.slice(5,16)} ${esc(r.operator)}（${esc(r.filename).slice(0,20)}，命中${r.hitCount}）`).join('；'):'暂无')+'</p>';
-  html+='<p class="note">纯静态版：使用记录保存在本浏览器（localStorage），刷新不丢；不同电脑/浏览器之间不共享。需要多人汇总统计请用局域网服务端版。</p>';
-  document.getElementById('statsBody').innerHTML=html;
+/* iframe 预览环境检测：沙箱内下载会被拦截 */
+(function(){
+  try{
+    if(window.self!==window.top){
+      var d=document.createElement('div');
+      d.style.cssText='background:#fff7e6;border:1px solid #ffd591;color:#ad6800;border-radius:8px;padding:10px 14px;margin:0 0 14px;font-size:13px';
+      d.innerHTML='\u26a0\ufe0f 当前页面在预览面板（iframe）中打开，文件下载会被浏览器拦截。请把链接复制到 Chrome/Edge 新标签页打开，或直接双击 index.html 使用，下载即正常。';
+      document.querySelector('.wrap').insertBefore(d,document.querySelector('.wrap').firstChild);
+    }
+  }catch(e){}
+})();
+/* ================= 使用统计 ================= */
+async function loadStats(){
+  try{
+    const s=await (await fetch('/api/stats')).json();
+    let html=`<div class="stats">
+      <div class="stat"><b>${s.total}</b><span>总使用次数</span></div>
+      <div class="stat"><b>${s.operators}</b><span>操作人数</span></div></div>`;
+    const ops=Object.entries(s.byOperator).sort((a,b)=>b[1].count-a[1].count);
+    if(ops.length){
+      html+='<table><tr><th>操作人</th><th>使用次数</th><th>命中总数</th><th>最近使用</th><th>最近文件</th></tr>';
+      ops.forEach(([n,v])=>{html+=`<tr><td>${esc(n)}</td><td><b>${v.count}</b></td><td>${v.hits}</td><td class="time">${esc(v.last)}</td><td>${esc((v.files[v.files.length-1]||'').slice(0,40))}</td></tr>`;});
+      html+='</table>';
+    }
+    html+='<p class="note">最近记录：'+(s.recent.length?s.recent.slice(0,5).map(r=>`${r.ts.slice(5,16)} ${esc(r.operator)}（${esc(r.filename).slice(0,20)}，命中${r.hitCount}）`).join('；'):'暂无')+'</p>';
+    document.getElementById('statsBody').innerHTML=html;
+  }catch(e){document.getElementById('statsBody').textContent='统计加载失败（服务未启动）';}
 }
+
+
 loadStats();
 </script>
 </body>
