@@ -120,7 +120,7 @@
       </div>
       <div id="annoView" style="padding:14px 0 18px;max-height:560px;overflow:auto"></div>
       <div id="finalView" class="hide" style="padding:14px 0 18px;max-height:560px;overflow:auto">
-        <p class="note" style="margin-bottom:8px">只改触碰违规类目的句子：已知违规句自动替换（<span class="applied">绿字</span>），其余高/中危命中点点击后可选择采用模板改写 / 保留原文 / 自行输入；低危提示项（学段词/绝对化）与学科词不改正文（只进统计），低危需要时勾选上方「显示低危提示」。改完点上方「下载调整后成稿」。</p>
+        <p class="note" style="margin-bottom:8px">只改触碰违规类目的句子：已知违规句自动替换（<span class="applied">绿字</span>）；语义违规句自动整句改写、常见违规词自动换合规说法（均为绿字）；没有安全改法的保留高亮，点「改」自行输入。改完点上方「下载调整后成稿」。</p>
         <div id="finalBody"></div>
       </div>
     </div>
@@ -571,21 +571,47 @@ document.getElementById('scanBtn').onclick=async()=>{
   toast('扫描完成：命中 '+hits.length+' 处，AI 语义判定中…');
   autoAI();
 };
-/* 扫描后自动 AI 语义判定：浏览器直连内置免费通道（免 Key、CORS 开放），失败自动回退手动面板 */
+/* AI 调用通道：局域网服务端代理优先（/api/ai），公开页自动回退浏览器直连免费通道（免 Key） */
+async function aiCall(prompt){
+  if(aiCall._svr===undefined){
+    try{const r=await fetch('/api/ai/status');const s=await r.json();aiCall._svr=!!(s&&s.configured);}
+    catch(e){aiCall._svr=false;}
+  }
+  if(aiCall._svr){
+    const r=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error);
+    return d.content||'';
+  }
+  const r=await fetch('https://text.pollinations.ai/openai',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'openai',temperature:0.2,stream:false,reasoning_effort:'low',max_tokens:8000,messages:[{role:'user',content:prompt}]})});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const d=await r.json();
+  return (d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||'';
+}
+/* 扫描后自动 AI 语义判定：分批逐段判定→自动合并，失败自动回退手动面板 */
 async function autoAI(){
   const st=document.getElementById('scanStatus');
   try{
-    if(st)st.textContent='🤖 AI 语义判定中（整篇逐句，约 15-60 秒）…';
-    const r=await fetch('https://text.pollinations.ai/openai',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'openai',temperature:0.2,stream:false,reasoning_effort:'low',max_tokens:8000,messages:[{role:'user',content:buildAiPrompt()}]})});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const d=await r.json();
-    const c=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||'';
-    const i=c.indexOf('['),j=c.lastIndexOf(']');
-    if(i<0||j<=i){toast('AI 未返回 JSON，已打开手动面板');openAiPanel();return;}
-    document.getElementById('aiResult').value=c.slice(i,j+1);
-    document.getElementById('aiApply').click();
+    const batches=promptBatches();
+    const results=[];
+    for(let i=0;i<batches.length;i++){
+      if(st)st.textContent='🤖 AI 语义判定中（第 '+(i+1)+'/'+batches.length+' 批）…';
+      let c=null,lastErr=null;
+      for(let t=0;t<2;t++){
+        try{c=await aiCall(batches[i]);break;}
+        catch(e){lastErr=e;if(t===0)await new Promise(r=>setTimeout(r,2500));}
+      }
+      if(c===null)throw (lastErr||new Error('AI 无响应'));
+      const ii=c.indexOf('['),jj=c.lastIndexOf(']');
+      if(ii>=0&&jj>ii){
+        try{const arr=JSON.parse(c.slice(ii,jj+1));if(Array.isArray(arr))results.push(...arr);}catch(e){}
+      }
+    }
     if(st)st.textContent='';
+    if(!results.length){toast('AI 未返回有效判定，已打开手动面板');openAiPanel();return;}
+    document.getElementById('aiResult').value=JSON.stringify(results);
+    document.getElementById('aiApply').click();
   }catch(e){
     if(st)st.textContent='';
     toast('AI 直连失败（'+e.message+'），已打开手动面板');openAiPanel();
@@ -667,6 +693,28 @@ function render(){
   renderTabs();
   renderDensity();
 }
+/* 成稿自动优化：语义命中用 AI 返回的整句 rec；词库命中用类目安全替换表；无安全改写的保留手动 */
+const RULEFIX={
+  E:[['最好','很好'],['最强','很强'],['最优','很优'],['第一','领先'],['唯一','少有'],['最','很'],['百分之百','大概率'],['100%','大概率'],['100％','大概率'],['必须','建议'],['一定','尽量'],['保证','争取'],['绝对','相对'],['无条件','按规则'],['永久','长期'],['终身','长期']],
+  I4:[['提分','把知识点学扎实'],['上分','把知识点学扎实'],['涨分','成绩稳步进步'],['暴涨','明显进步'],['抢分','抓紧复习'],['保分','安心备考'],['押题','梳理重点'],['押中','命中考点'],['母题','经典题型'],['必过','尽力考好'],['必到','值得认真听'],['必收','值得记'],['搞定','掌握'],['裸分','卷面成绩']],
+  F:[['淘汰','分流'],['跟不上','进度有快有慢'],['差距拉大','差距会有变化'],['来不及','要抓紧'],['就晚了','正当时'],['分水岭','关键阶段'],['考不上','升学结果有多种可能'],['再不','建议尽早']],
+  G:[['加微信','看评论区'],['加我','评论区找我'],['私信我','评论区留言'],['私信','评论区'],['进群','一起交流'],['扣1','评论区留言'],['扣个1','评论区留言']],
+  H:[['仅剩','还有'],['仅剩最后','还剩'],['最后','抓紧时间，还剩'],['倒计时','时间有限'],['限时','近期'],['限量','数量有限'],['涨价','价格会有调整'],['秒杀','优惠'],['错过','留意']],
+  A:[['直播','看内容讲解'],['上课','学习'],['听课','听讲解'],['这节课','这个内容'],['训练营','学习营'],['集训营','学习营'],['小灶','针对性辅导'],['试听','试看'],['回放','复习材料'],['二讲','辅导'],['开摄像头','跟着练']],
+  D:[['年教龄','余年从业经验'],['教龄','从业经验'],['状元','高分学长'],['名校毕业','经验丰富'],['985','重点院校'],['211','重点院校']],
+  I4b:[['垃圾的学校','办学水平参差的学校'],['垃圾','水平参差'],['野鸡','资质存疑的']],
+  PA:[['傻','理解有偏差'],['笨','还没开窍'],['废物','还没找到方法'],['蠢','思路没绕过来'],['滚','我们先继续'],['对线','不必争论']],
+  PD:[['送快递','还有别的路'],['送外卖','还有别的路'],['扫大街','还有别的路'],['捡破烂','还有别的路'],['报废','负担很重'],['坑了','耽误了'],['没出息','还没发挥出来']],
+  PC:[['骗子','不靠谱'],['坑人','不实在'],['套路人','不实在']],
+};
+function fixText(id,txt){
+  const map=RULEFIX[id]||[];
+  let out=txt,changed=false;
+  map.forEach(p=>{
+    if(out.indexOf(p[0])>=0){out=out.split(p[0]).join(p[1]);changed=true;}
+  });
+  return changed?out:null;
+}
 function renderFinal(){
   const {chunks,hits}=STATE;
   // 成稿只改「触碰违规类目」的句子：默认高/中危才给出改写点，低危提示项（学段词/绝对化）保持原样，勾选"显示低危提示"后才纳入
@@ -701,7 +749,11 @@ function renderFinal(){
       if(e.start<pos)continue;
       if(e.start>pos)parts.push({t:text.slice(pos,e.start)});
       if(e.kind==='known')parts.push({fix:e.to,cat:e.cat});
-      else parts.push({hit:text.slice(e.start,e.end),rule:e.h.rule});
+      else{
+        const auto=e.h.rule.rec||fixText(e.h.rule.id,text.slice(e.start,e.end));
+        if(auto)parts.push({fix:auto,cat:e.h.rule.cat});
+        else parts.push({hit:text.slice(e.start,e.end),rule:e.h.rule});
+      }
       pos=e.end;
     }
     if(pos<text.length)parts.push({t:text.slice(pos)});
@@ -740,8 +792,7 @@ function renderTabs(){setTab('anno');}
 
 /* ================= 语义扫描（AI 判定）：提示词生成 + 结果合并 ================= */
 const AICAT={A:'A类 暗示直播课',B:'B类 学科指向',C:'C类 效果承诺升学',D:'D类 师资背景',E:'E类 绝对化用语',F:'F类 焦虑营销',G:'G类 私域导流',H:'H类 虚假促销'};
-function buildAiPrompt(){
-  const text=STATE.chunks.map(c=>c.text).join('\n');
+function buildAiPromptCore(){
   return ['你是抖音教育直播合规审核专家。对以下直播文稿【逐句按语义判定】，不要做字面词匹配——不出现违规词但语义构成违规的句子同样要判出来。八类语义口径：',
   'A 暗示直播课/货不对板：售卖或引导购买语境下，任何暗示"能看直播/上课/听讲/回放"的表述。无论是否说出"直播"二字：N节课、二讲、训练营、1v1、开摄像头、试听、带练等都算',
   'B 学段与学科指向：任何能让观众识别出具体学科（语文/数学/英语/作文/词汇/语法/阅读理解…）或学段（小学/初中/高中/中考/高考…）的表述',
@@ -753,14 +804,27 @@ function buildAiPrompt(){
   'H 虚假促销与稀缺性话术：任何制造紧迫感或稀缺感的表述——限时/限量/仅剩/最后X名/倒计时/涨价',
   '',
   '【语义判别要点】同类意图换个说法也算。常见变体举例（仅示意，不限于此）：提分类——上分/涨分/暴涨/抢分/压轴提分/错题变少/正确率上来了；效果承诺类——稳步提升/跟着学稳了/分数不会差；焦虑类——现阶段/到了分水岭/考完再想就迟了。',
-  '【判定要求】理解说话意图而非匹配字面；忽略标注符号与时间戳；一句命中多类可输出多条；拿不准的句子倾向判出（宁可多标由人工复核）。',
+  '【判定要求】理解说话意图而非匹配字面；忽略标注符号与时间戳；一句命中多类可输出多条；拿不准的句子倾向判出（宁可多标由人工复核）；必须逐句检查到文稿末尾，不得中途省略或跳过。',
   '【输出格式】只输出 JSON 数组，不要任何其他文字：[{"s":"命中原句（必须与原文完全一致，便于定位）","cat":"A|B|C|D|E|F|G|H","sev":"高|中|低","why":"不超过25字的理由","rec":"对应违规调整：改写后的合规说法，不超过30字"}]。全篇无违规则输出 []',
   '',
   '【改写范例（官方口径，rec 必须对齐这种风格：去保证化、去贬损、改中性客观描述、落到可查证信息）】',
-  ...KNOWN.filter(k=>k[2]&&k[2]!=='—').map(k=>k[0]+' → '+k[1]+'（'+k[2]+'）'),
-  '',
-  '【直播文稿全文】',
-  text].join('\n');
+  ...KNOWN.filter(k=>k[2]&&k[2]!=='—').map(k=>k[0]+' → '+k[1]+'（'+k[2]+'）')
+  ].join('\n');
+}
+function buildAiPrompt(){
+  return buildAiPromptCore()+'\n\n【直播文稿全文】\n'+STATE.chunks.map(c=>c.text).join('\n');
+}
+/* 分批判定：每批约 2800 字，避免长文输入截断导致漏判 */
+function promptBatches(){
+  const core=buildAiPromptCore();
+  const batches=[];let cur=[],len=0;
+  STATE.chunks.forEach(c=>{
+    if(len+c.text.length>2800&&cur.length){batches.push(cur);cur=[];len=0;}
+    cur.push(c.text);len+=c.text.length;
+  });
+  if(cur.length)batches.push(cur);
+  if(!batches.length)batches.push(['（空文稿）']);
+  return batches.map((b,i)=>core+'\n\n【直播文稿全文（共 '+batches.length+' 批，当前第 '+(i+1)+' 批，只判本批内容）】\n'+b.join('\n'));
 }
 function openAiPanel(){
   document.getElementById('aiPrompt').value=buildAiPrompt();
