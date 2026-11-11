@@ -293,16 +293,16 @@ function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g
    按「判罚现实性」排序：平台对线类（单条举报可判）> 暗示直播课 > 私域导流 > 学科点名 > 提分禁词 > 师资 > 学校评价 > 逼单 > 焦虑 > 绝对化 > 学段词 */
 const VERDICT_ORDER=[
   {ids:['PA','PD','PC'],label:'与观众对线的人身攻击 / 贬损（平台「不友善内容」）',why:'这类不靠话术密度，一条观众举报+人工复核即可判罚（警告～封禁1天）',color:'#d63031'},
-  {ids:['A'],label:'口播暗示直播课 / 货不对板',why:'K12 品类直接判罚点，与密度无关',color:'#d63031'},
+  {ids:['A'],label:'带货语境暗示直播课 / 货不对板',why:'K12 品类直接判罚点——只有接商品/卖课语境才判，纯讲内容不带货时「直播」一词可正常使用',color:'#d63031'},
   {ids:['G'],label:'私域导流与私下交易',why:'口播/字幕/评论区出现任一即违规',color:'#d63031'},
-  {ids:['B'],label:'学科词直接点名',why:'K12 最高危类目，接商品/卖课场景必须全部清除',color:'#e67e22'},
-  {ids:['C','I4'],label:'效果承诺与极限词（提分 / 保分 / 必过）',why:'1.4 明列禁词',color:'#d63031'},
+  {ids:['B'],label:'学科词直接点名',why:'K12 最高危类目；「洗词」只换名词不换行为动词（上课/听课/做题等）仍照判，接商品/卖课场景必须全部清除',color:'#e67e22'},
+  {ids:['C','I4'],label:'效果承诺与极限词（提分 / 上分 / 保分 / 裸数字分）',why:'1.4 明列禁词；「上分」「提分」同判，出现具体分数（如「90 分」）即构成承诺',color:'#d63031'},
   {ids:['D'],label:'师资身份与年限表述',why:'需人设资质背书支撑，否则按虚假资质处理',color:'#e67e22'},
-  {ids:['I4b'],label:'评价 / 贬损学校',why:'1.4 明列「不评价学校与对比成绩」',color:'#e67e22'},
+  {ids:['I4b'],label:'评价 / 贬损学校',why:'1.4 明列「不评价学校与对比成绩」；引课文需为纯文学语境，出现贬损性语境即判',color:'#e67e22'},
   {ids:['H'],label:'限时限量逼单话术',why:'虚假促销类判罚',color:'#e67e22'},
   {ids:['F'],label:'焦虑营销（淘汰 / 来不及）',why:'制造教育焦虑可触发限流 / 封带货',color:'#e67e22'},
   {ids:['E'],label:'绝对化用语',why:'广告法红线，多为叠加项',color:'#ad6800'},
-  {ids:['B2'],label:'学段词（规划场可保留）',why:'一旦接商品 / 卖课必须替换',color:'#6b7280'},
+  {ids:['B2'],label:'学段词（单独出现不判，与学科×带货组合才升级）',why:'一旦接商品 / 卖课必须替换',color:'#6b7280'},
 ];
 function coreVerdict(hits){
   if(!hits.length)return {text:'✅ 词面上没有可判罚点——本场风险只剩话术密度、画面/贴片，需人工核查。',html:'<div style="border-left:4px solid #00693e;background:#f0f9f4;padding:8px 12px;border-radius:0 6px 6px 0"><b style="color:#00693e">✅ 词面上没有可判罚点</b>——本场风险只剩话术密度、画面/贴片，需人工核查。</div>'};
@@ -318,9 +318,11 @@ function coreVerdict(hits){
     }
   }
   const high=hits.filter(h=>h.rule.sev==='高').length;
-  const others=hits.length-mainHits;
   let txt='本场核心违规：<b>'+main.label+'</b>（'+mainHits+' 处'+(mainHigh?'，其中高危 '+mainHigh+' 处':'')+'）——'+main.why+'。';
   if(second)txt+='其余以「'+second.label+'」（'+secondHits+' 处）为主；';
+  // 四要素组合判定（学科×学段×带货语境）——《违规共同点核查》口径
+  const nSubj=byId['B']?byId['B'].n:0,nGrad=byId['B2']?byId['B2'].n:0,nLive=byId['A']?byId['A'].n:0;
+  if(nSubj>0&&nGrad>0&&nLive>0)txt+='<b style="color:#c0392b">学科×学段×带货语境四要素已凑齐</b>——该组合属直接判罚形态，此时换词无效，须整体更换内容形态（改为规划/方法场）。';
   txt+='全场共命中 '+hits.length+' 处（高 '+high+'）。';
   const html='<div style="border-left:4px solid '+main.color+';background:#fafbfc;padding:8px 12px;border-radius:0 6px 6px 0;font-size:13.5px"><b style="color:'+main.color+'">为什么违规（一句话）：</b>'+txt+'</div>';
   return {html:html,text:txt};
