@@ -85,7 +85,7 @@
       <h3>三步上手</h3>
       <ol>
         <li><b>填名字 → 传稿件</b>：操作人填你的名字（统计用）；点「上传文稿」选直播导出的 .doc/.docx/txt，或直接把口播文本粘贴到下方输入框。</li>
-        <li><b>点「开始扫描标注」</b>：自动出 4 样结果——场次概览（为什么违规一句话）、密度诊断（40秒扎堆/钩子节奏）、标注版全文、调整后成稿。AI 语义二审自动运行（蓝色荧光），不用手动操作。</li>
+        <li><b>点「开始扫描标注」</b>：自动出 4 样结果——场次概览（为什么违规一句话）、密度诊断（40秒扎堆/钩子节奏）、标注版全文、调整后成稿。默认只跑词库（快、稳定）；需要 AI 语义二审时勾选右侧「AI 语义二审」（联网可用时，蓝色荧光为 AI 追加命中）。</li>
         <li><b>核对 → 下载</b>：成稿里绿字是已自动替换的合规句，需要微调的点句中「改」按钮；最后点「下载标注版」和「下载调整后成稿」两个按钮拿 Word，直接可交。</li>
       </ol>
       <h3>结果怎么看</h3>
@@ -124,6 +124,7 @@
       <button id="scanBtn">🔍 开始扫描标注</button>
       <button id="dlAnno" class="ghost" disabled>⬇️ 下载标注版（含优化句）.doc</button>
       <button id="dlFinal" class="ghost" disabled>⬇️ 下载调整后成稿 .doc</button>
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--sub);cursor:pointer"><input type="checkbox" id="aiToggle">AI 语义二审（联网可用时勾选，默认关）</label>
       <span id="scanStatus" style="color:var(--sub);font-size:12.5px"></span>
     </div>
   </div>
@@ -640,8 +641,9 @@ document.getElementById('scanBtn').onclick=async()=>{
   STATE={filename,paras,chunks,hits,hasTs:withTs.length>=3,showLow:document.getElementById('showLow').checked};
   render();
   logUse('scan');
-  toast('扫描完成：命中 '+hits.length+' 处，AI 语义判定中…');
-  autoAI();
+  const aiOn=!!(document.getElementById('aiToggle')&&document.getElementById('aiToggle').checked);
+  if(aiOn){toast('扫描完成：命中 '+hits.length+' 处，AI 语义判定中…');autoAI();}
+  else{toast('扫描完成：命中 '+hits.length+' 处（纯词库模式；需要 AI 语义二审可勾选后重扫）');}
 };
 /* AI 调用通道：局域网服务端代理优先（/api/ai），公开页自动回退浏览器直连免费通道（免 Key） */
 async function aiCall(prompt){
