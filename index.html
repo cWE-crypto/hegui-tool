@@ -65,7 +65,7 @@
 <div class="wrap">
   <header>
     <h1>🎙️ 话术合规官 · 直播文稿违规标注工具</h1>
-    <p>依据《高途集团-抖音直播违规说明》（飞书 wiki 2026-11 版）A–H 八类口径 · 售卖课程阶段不得提"直播" · 上传文稿 → 自动标注 → 生成调整后可照读成稿</p>
+    <p>依据《高途集团-抖音直播违规说明》（飞书 wiki）+《违规共同点核查》四要素口径 · 不带货可说"直播"，带货阶段不得提 · 洗词变体照判 · 词库标注 → 语义二审 → 生成调整后可照读成稿</p>
   </header>
 
   <div class="card">
@@ -836,7 +836,7 @@ document.getElementById('dlAnno').onclick=()=>{
   const groups={};
   sorted.forEach(h=>{const g=groups[h.rule.cat]||(groups[h.rule.cat]={rule:h.rule,n:0,words:{}});g.n++;g.words[h.text]=(g.words[h.text]||0)+1;});
   const gKeys=Object.keys(groups).sort((a,b)=>_sevRank[groups[a].rule.sev]-_sevRank[groups[b].rule.sev]||groups[b].n-groups[a].n);
-  let body=`<h1>${esc(filename)}——违规点标注 + 优化后句子</h1><p class="meta">源文件 ${esc(filename)}｜原文 ${chunks.length} 段 / ${chunks.reduce((a,c)=>a+c.text.length,0)} 字｜生成时间：${new Date().toLocaleString('zh-CN')}｜依据：《高途集团-抖音直播违规说明》（飞书 wiki 2026-11 版）A–H 八类，售卖课程阶段不得提"直播"｜A/B/C 三级判定</p>`;
+  let body=`<h1>${esc(filename)}——违规点标注 + 优化后句子</h1><p class="meta">源文件 ${esc(filename)}｜原文 ${chunks.length} 段 / ${chunks.reduce((a,c)=>a+c.text.length,0)} 字｜生成时间：${new Date().toLocaleString('zh-CN')}｜依据：《高途集团-抖音直播违规说明》（飞书 wiki）+《违规共同点核查》四要素口径｜不带货可说"直播"，带货阶段不得提｜洗词变体照判｜【类目ID·类名】标注，【】高危/〔〕中危/〈〉低危</p>`;
   body+='<p><b>核心结论：</b>'+coreVerdict(hits).text+'</p>';
   body+='<h2>一、标注口径与色块说明</h2>';
   body+='<p>【A:词】＝明确违规，依据充分，必须整改；〔B:词〕＝倾向违规，表述委婉或要素不齐，建议整改；〈C:词〉＝提示项，规则未完全成立但存在判定风险。词底色＝违规大类（见下表），与《韦老师聊学习》《别走弯路 初三》两份标注版口径一致。</p>';
