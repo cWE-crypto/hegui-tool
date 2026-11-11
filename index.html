@@ -568,9 +568,29 @@ document.getElementById('scanBtn').onclick=async()=>{
   STATE={filename,paras,chunks,hits,hasTs:withTs.length>=3,showLow:document.getElementById('showLow').checked};
   render();
   logUse('scan');
-  toast('扫描完成：命中 '+hits.length+' 处，已打开语义二审面板');
-  openAiPanel();
+  toast('扫描完成：命中 '+hits.length+' 处，AI 语义判定中…');
+  autoAI();
 };
+/* 扫描后自动 AI 语义判定：浏览器直连内置免费通道（免 Key、CORS 开放），失败自动回退手动面板 */
+async function autoAI(){
+  const st=document.getElementById('scanStatus');
+  try{
+    if(st)st.textContent='🤖 AI 语义判定中（整篇逐句，约 15-60 秒）…';
+    const r=await fetch('https://text.pollinations.ai/openai',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'openai',temperature:0.2,stream:false,reasoning_effort:'low',max_tokens:8000,messages:[{role:'user',content:buildAiPrompt()}]})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const c=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||'';
+    const i=c.indexOf('['),j=c.lastIndexOf(']');
+    if(i<0||j<=i){toast('AI 未返回 JSON，已打开手动面板');openAiPanel();return;}
+    document.getElementById('aiResult').value=c.slice(i,j+1);
+    document.getElementById('aiApply').click();
+    if(st)st.textContent='';
+  }catch(e){
+    if(st)st.textContent='';
+    toast('AI 直连失败（'+e.message+'），已打开手动面板');openAiPanel();
+  }
+}
 
 function render(){
   const {chunks,hits}=STATE;
